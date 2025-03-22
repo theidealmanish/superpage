@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Wallet, ArrowRight } from 'lucide-react';
-
+import axios from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -118,6 +118,7 @@ export default function SignUpPage() {
 			alert('Please install MetaMask to connect your wallet');
 		}
 	}
+
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
 			<Card className='w-full max-w-xl'>

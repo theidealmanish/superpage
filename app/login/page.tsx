@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-
+import axios from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -56,25 +56,15 @@ export default function SignInPage() {
 		setError(null);
 
 		try {
-			// API call would go here
-			const response = await fetch('/api/auth/signin', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(values),
-			});
+			// Using axios instead of fetch
+			const response = await axios.post('/api/auth/login', values);
 
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.message || 'Invalid username/email or password');
-			}
+			// With axios, data is already parsed as JSON
+			const data = response.data;
 
 			// Redirect after successful login
 			router.push('/dashboard');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to sign in');
 			console.error(err);
 		} finally {
 			setIsLoading(false);
