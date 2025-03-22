@@ -7,6 +7,7 @@ interface User extends mongoose.Document {
 	email: string;
 	password: string;
 	walletAddress: string;
+	comparePassword: (password: string) => Promise<boolean>;
 }
 
 const userSchema = new mongoose.Schema<User>({
