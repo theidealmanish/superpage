@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-import axios from '@/lib/axios';
+import { login } from '@/api/auth';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 // Form validation schema that accepts either username or email
 const signInSchema = z.object({
@@ -55,20 +56,24 @@ export default function SignInPage() {
 		setIsLoading(true);
 		setError(null);
 
-		try {
-			// Using axios instead of fetch
-			const response = await axios.post('/api/auth/login', values);
-
-			// With axios, data is already parsed as JSON
-			const data = response.data;
-
-			// Redirect after successful login
-			router.push('/dashboard');
-		} catch (err) {
-			console.error(err);
-		} finally {
-			setIsLoading(false);
-		}
+		login({
+			identifier: values.identifier,
+			password: values.password,
+		})
+			.then((response) => {
+				toast.success('Login successful!');
+				// Store the token in local storage or context
+				localStorage.setItem('token', response.token);
+				router.push('/home');
+			})
+			.catch((error) => {
+				// Handle login error
+				console.error('Login error:', error.response.data.message);
+				setError(error.response.data.message);
+			})
+			.finally(() => {
+				setIsLoading(false);
+			});
 	}
 
 	return (

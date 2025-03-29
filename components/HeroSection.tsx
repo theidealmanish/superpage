@@ -27,13 +27,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ className }) => {
 			<div className='relative z-10 container mx-auto px-4 py-12 sm:px-6 lg:px-8 text-center'>
 				<div className='max-w-3xl mx-auto'>
 					<h1 className='text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-primary'>
-						Create Stunning Landing Pages in Minutes
+						Superpage: The Future of Creator Economies.
 					</h1>
 
 					<p className='text-xl text-gray-700 mb-10 max-w-2xl mx-auto'>
-						Build professional landing pages without any design or coding
-						skills. SuperPage gives you all the tools you need to grow your
-						business online.
+						Web3 tools for creators and their communities.
 					</p>
 
 					<div className='flex flex-col sm:flex-row gap-4 justify-center'>

@@ -10,12 +10,49 @@ interface MainNavProps {
 }
 
 const MainNav: React.FC<MainNavProps> = ({ className }) => {
-	const path = usePathname();
+	const [isScrolled, setIsScrolled] = useState(false);
+	const [isVisible, setIsVisible] = useState(true);
+	const [lastScrollY, setLastScrollY] = useState(0);
+	const pathname = usePathname();
+
+	useEffect(() => {
+		const controlNavbar = () => {
+			if (typeof window !== 'undefined') {
+				// Check if scrolled more than 20px to add transparency
+				if (window.scrollY > 20) {
+					setIsScrolled(true);
+				} else {
+					setIsScrolled(false);
+				}
+
+				// Hide on scroll down, show on scroll up
+				if (window.scrollY > lastScrollY + 10) {
+					// Added threshold to avoid flickering
+					setIsVisible(false);
+				} else if (window.scrollY < lastScrollY - 10) {
+					setIsVisible(true);
+				}
+
+				setLastScrollY(window.scrollY);
+			}
+		};
+
+		window.addEventListener('scroll', controlNavbar);
+
+		// Cleanup event listener
+		return () => {
+			window.removeEventListener('scroll', controlNavbar);
+		};
+	}, [lastScrollY]);
 
 	return (
 		<nav
 			className={cn(
-				'fixed top-2 w-11/12 max-w-6xl mx-auto left-0 rounded-xl right-0 z-50 px-6 py-4 transition-all duration-300 rounded-lgbg-white/70 backdrop-blur-md shadow-md',
+				'fixed top-2 w-11/12 max-w-6xl mx-auto left-0 right-0 z-50 px-6 py-4 transition-all duration-300 rounded-lg',
+				isScrolled
+					? 'bg-white/70 backdrop-blur-md shadow-md'
+					: 'bg-transparent',
+				isVisible ? 'transform translate-y-0' : 'transform -translate-y-[150%]',
 				className
 			)}
 		>
@@ -30,7 +67,9 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 						className={cn(
 							'px-4 py-2 rounded-md transition-colors',
 							'hover:bg-primary/10',
-							path === '/login' ? 'font-medium text-primary' : 'text-gray-700'
+							pathname === '/login'
+								? 'font-medium text-primary'
+								: 'text-gray-700'
 						)}
 					>
 						Log in
