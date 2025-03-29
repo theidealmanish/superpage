@@ -1,22 +1,8 @@
 'use client';
 
-import { WsProvider, ApiPromise } from '@polkadot/api';
-import { useEffect, useState } from 'react';
-import {
-	web3Accounts,
-	web3Enable,
-	web3FromAddress,
-} from '@polkadot/extension-dapp';
-import { InjectedAccountWithMeta } from '@polkadot/extension-inject/types';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-	CardFooter,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
 	Loader2,
@@ -24,9 +10,7 @@ import {
 	CheckCircle2,
 	Copy,
 	ExternalLink,
-	ChevronDown,
 } from 'lucide-react';
-import { formatBalance } from '@polkadot/util';
 import {
 	Select,
 	SelectContent,
@@ -36,119 +20,27 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-
-type TransactionStatus = 'idle' | 'preparing' | 'pending' | 'success' | 'error';
-
-interface TransactionState {
-	status: TransactionStatus;
-	message: string;
-	hash?: string;
-	blockHash?: string;
-	timestamp?: number;
-}
+import { usePolkadotPayment } from '@/hooks/usePolkadotPayment';
 
 export default function PaymentPage() {
-	const [api, setApi] = useState<ApiPromise | null>(null);
-	const [accounts, setAccounts] = useState<InjectedAccountWithMeta[]>([]);
-	const [selectedAccount, setSelectedAccount] =
-		useState<InjectedAccountWithMeta | null>(null);
-	const [isClient, setIsClient] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [connectionError, setConnectionError] = useState<string | null>(null);
-	const [recipient, setRecipient] = useState('');
+	const [recipient, setRecipient] = useState(
+		'1ZcadMuo1X7NWdNCk8vXZccqzKtoBKjQ4CFVNvpVbu1QPs2'
+	);
 	const [amount, setAmount] = useState('0.1');
-	const [txnState, setTxnState] = useState<TransactionState>({
-		status: 'idle',
-		message: '',
-	});
 	const [hashCopied, setHashCopied] = useState(false);
 
-	// get the recipient address from the recipient input
-	const [recipientAddress, setRecipientAddress] = useState('');
-	const [isRecipientValid, setIsRecipientValid] = useState(false);
-
-	// Function to validate the recipient address
-	const getRecipientAddress = (username: string) => {};
-
-	// This effect runs once on component mount
-	useEffect(() => {
-		setIsClient(true); // Indicate that we're now on the client side
-	}, []);
-
-	const handleConnection = async () => {
-		try {
-			setIsLoading(true);
-			setConnectionError(null);
-
-			const extensions = await web3Enable('SuperPage');
-
-			if (extensions.length === 0) {
-				setConnectionError(
-					'No Polkadot extension found. Please install the extension and try again.'
-				);
-				return;
-			}
-
-			const allAccounts = await web3Accounts();
-			setAccounts(allAccounts);
-
-			if (allAccounts.length > 0) {
-				setSelectedAccount(allAccounts[0]);
-			}
-		} catch (error) {
-			console.error('Failed to connect:', error);
-			setConnectionError(
-				'Failed to connect to the Polkadot extension. Please try again.'
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const setup = async () => {
-		try {
-			const provider = new WsProvider('wss://pas-rpc.stakeworld.io');
-			const api = await ApiPromise.create({ provider });
-			setApi(api);
-
-			// Retrieve the chain & node information via rpc calls
-			const [chain, nodeName, nodeVersion] = await Promise.all([
-				api.rpc.system.chain(),
-				api.rpc.system.name(),
-				api.rpc.system.version(),
-			]);
-
-			console.log(
-				`You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`
-			);
-		} catch (error) {
-			console.error('Failed to connect to Polkadot network:', error);
-			setConnectionError(
-				'Failed to connect to Polkadot network. Please try again later.'
-			);
-		}
-	};
-
-	// Only run setup after we confirm we're on the client
-	useEffect(() => {
-		if (isClient) {
-			setup();
-		}
-	}, [isClient]);
-
-	useEffect(() => {
-		if (!api || !isClient) return;
-
-		(async () => {
-			try {
-				const time = await api.query.timestamp.now();
-				console.log('Current blockchain time:', time.toPrimitive());
-			} catch (error) {
-				console.error('Error fetching timestamp:', error);
-			}
-		})();
-	}, [api, isClient]);
+	const {
+		accounts,
+		selectedAccount,
+		setSelectedAccount,
+		isClient,
+		isLoading,
+		connectionError,
+		txnState,
+		connectWallet,
+		makePayment,
+		resetTransaction,
+	} = usePolkadotPayment('SuperPay');
 
 	const copyToClipboard = (text: string) => {
 		navigator.clipboard.writeText(text);
@@ -157,112 +49,17 @@ export default function PaymentPage() {
 	};
 
 	const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		// Allow only numbers and decimals
 		const value = e.target.value.replace(/[^0-9.]/g, '');
 		setAmount(value);
 	};
 
-	// create a function to send the fund to another account
-	const handlePayment = async () => {
-		if (!selectedAccount) {
-			setTxnState({
-				status: 'error',
-				message: 'No account selected. Please connect your wallet first.',
-			});
-			return;
-		}
-
-		if (!api) {
-			setTxnState({
-				status: 'error',
-				message: 'API not connected. Please refresh the page and try again.',
-			});
-			return;
-		}
-
-		try {
-			setTxnState({
-				status: 'preparing',
-				message: 'Preparing your transaction...',
-			});
-
-			// Convert the amount from DOT to Planck
-			// For Polkadot, 1 DOT = 10^10 Planck
-			const amountInPlanck = BigInt(parseFloat(amount) * 10000000000);
-
-			const injector = await web3FromAddress(selectedAccount.address);
-
-			setTxnState({
-				status: 'pending',
-				message:
-					'Transaction pending. Please sign the transaction in your wallet extension.',
-			});
-
-			const unsub = await api.tx.balances
-				.transferKeepAlive(recipient, amountInPlanck)
-				.signAndSend(
-					selectedAccount.address,
-					{ signer: injector.signer },
-					(result) => {
-						console.log(`Current status is ${result.status}`);
-
-						if (result.status.isInBlock) {
-							const blockHash = result.status.asInBlock.toString();
-							setTxnState({
-								status: 'pending',
-								message: `Transaction included in block ${blockHash.slice(
-									0,
-									10
-								)}...`,
-								hash: result.txHash.toString(),
-								blockHash: blockHash,
-							});
-						} else if (result.status.isFinalized) {
-							const finalizedHash = result.status.asFinalized.toString();
-							setTxnState({
-								status: 'success',
-								message: 'Transaction successful!',
-								hash: result.txHash.toString(),
-								blockHash: finalizedHash,
-								timestamp: Date.now(),
-							});
-							unsub();
-						} else if (result.isError) {
-							setTxnState({
-								status: 'error',
-								message: `Transaction failed: ${
-									result.dispatchError?.toString() || 'Unknown error'
-								}`,
-							});
-							unsub();
-						}
-					}
-				);
-		} catch (error: any) {
-			console.error('Payment failed:', error);
-			setTxnState({
-				status: 'error',
-				message: `Error: ${error.message || 'Unknown error occurred'}`,
-			});
-		}
-	};
-
-	// Reset transaction state
-	const resetTransaction = () => {
-		setTxnState({
-			status: 'idle',
-			message: '',
-		});
-	};
-
-	// Display a minimal UI while rendering on server
+	// Simple loading UI for SSR
 	if (!isClient) {
 		return (
 			<div className='container mx-auto mt-20 p-6 flex items-center justify-center min-h-screen'>
 				<Card className='w-full max-w-md'>
 					<CardHeader>
 						<CardTitle>Payment</CardTitle>
-						<CardDescription>Loading payment interface...</CardDescription>
 					</CardHeader>
 					<CardContent className='flex justify-center py-6'>
 						<Loader2 className='h-8 w-8 animate-spin text-primary' />
@@ -285,7 +82,7 @@ export default function PaymentPage() {
 				<CardContent className='space-y-4'>
 					{!accounts.length ? (
 						<Button
-							onClick={handleConnection}
+							onClick={connectWallet}
 							disabled={isLoading}
 							className='w-full'
 						>
@@ -300,6 +97,7 @@ export default function PaymentPage() {
 						</Button>
 					) : (
 						<>
+							{/* Account display and selection UI */}
 							<div className='bg-gray-50 p-3 rounded-md'>
 								<h3 className='font-medium text-sm text-gray-600 mb-2'>
 									Selected Account
@@ -341,11 +139,10 @@ export default function PaymentPage() {
 								</div>
 							)}
 
-							<Separator className='my-4' />
-
+							{/* Payment form */}
 							<div className='space-y-4'>
 								<div>
-									<Label htmlFor='recipient'>Recipient</Label>
+									<Label htmlFor='recipient'>Recipient Address</Label>
 									<Input
 										id='recipient'
 										value={recipient}
@@ -366,7 +163,7 @@ export default function PaymentPage() {
 								</div>
 							</div>
 
-							{/* Show transaction status */}
+							{/* Transaction status display */}
 							{txnState.status !== 'idle' && (
 								<Alert
 									className={
@@ -398,6 +195,7 @@ export default function PaymentPage() {
 										</div>
 									</AlertTitle>
 									<AlertDescription className='text-xs'>
+										{txnState.message}
 										{txnState.hash && (
 											<div className='mt-2 p-2 bg-white/50 rounded-md border w-full'>
 												<div className='flex items-center justify-between w-full'>
@@ -447,14 +245,15 @@ export default function PaymentPage() {
 								</Alert>
 							)}
 
+							{/* Action buttons */}
 							{txnState.status === 'success' ? (
-								<Button onClick={resetTransaction} className='w-full mt-4'>
+								<Button onClick={resetTransaction} className='w-full mt-2'>
 									Make Another Payment
 								</Button>
 							) : (
 								<Button
-									onClick={handlePayment}
-									className='w-full mt-4'
+									onClick={() => makePayment(recipient, amount)}
+									className='w-full mt-2'
 									disabled={
 										txnState.status === 'pending' ||
 										txnState.status === 'preparing'
