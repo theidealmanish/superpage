@@ -110,8 +110,8 @@ export default function UserProfilePage() {
 	}
 
 	return (
-		<div className='min-h-screen flex flex-col items-center py-12 px-4 bg-gray-50'>
-			<div className='w-full max-w-md mx-auto'>
+		<div className='min-h-screen flex flex-col items-center py-12 px-4 bg-gray-50 '>
+			<div className='w-full max-w-md mx-auto mt-16'>
 				{/* Profile Header */}
 				<div className='flex flex-col items-center text-center mb-8'>
 					{/* Avatar */}
@@ -163,8 +163,6 @@ export default function UserProfilePage() {
 						<p className='text-center max-w-md mb-6'>{profile.bio}</p>
 					)}
 				</div>
-
-				{/* Linktree-style links */}
 				<div className='space-y-3'>
 					{/* Email Button */}
 					<Button
@@ -255,6 +253,73 @@ export default function UserProfilePage() {
 							</a>
 						</Button>
 					)}
+				</div>
+
+				{/* Coming Soon Features Card */}
+				<div className='mt-12'>
+					<div className='bg-white rounded-xl shadow-sm border p-6 transition-all hover:shadow-md'>
+						<h2 className='text-xl font-semibold mb-4 flex items-center'>
+							<span className='mr-2'>✨</span> Coming Soon Features
+						</h2>
+
+						<div className='space-y-4'>
+							<div className='flex items-start'>
+								<span className='text-2xl mr-3'>🎨</span>
+								<div>
+									<h3 className='font-medium'>NFT Social Media Content</h3>
+									<p className='text-sm text-muted-foreground'>
+										Create and sell digital art as NFTs directly from your
+										profile.
+									</p>
+								</div>
+							</div>
+
+							<div className='flex items-start'>
+								<span className='text-2xl mr-3'>💰</span>
+								<div>
+									<h3 className='font-medium'>Recurring Subscriptions</h3>
+									<p className='text-sm text-muted-foreground'>
+										Offer premium content to your subscribers with monthly
+										membership plans.
+									</p>
+								</div>
+							</div>
+
+							<div className='flex items-start'>
+								<span className='text-2xl mr-3'>🛍️</span>
+								<div>
+									<h3 className='font-medium'>Digital Stores</h3>
+									<p className='text-sm text-muted-foreground'>
+										Set up your own store to sell digital products and
+										merchandise.
+									</p>
+								</div>
+							</div>
+
+							{/* Animated "Live" indicator */}
+							<div className='mt-6 flex items-center'>
+								<span className='relative flex h-3 w-3 mr-2'>
+									<span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75'></span>
+									<span className='relative inline-flex rounded-full h-3 w-3 bg-green-500'></span>
+								</span>
+								<span className='text-sm font-medium text-green-600'>
+									In active development
+								</span>
+							</div>
+
+							{/* Early access signup button */}
+							<Button
+								className='w-full mt-2'
+								onClick={() =>
+									window.alert(
+										'Thanks for your interest! Early access signup will be available soon.'
+									)
+								}
+							>
+								Get Early Access
+							</Button>
+						</div>
+					</div>
 				</div>
 
 				<div className='mt-12 text-center'>
