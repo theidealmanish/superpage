@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Superpa.ge: Empowering Creators, Rewarding Communities
 
-## Getting Started
+## Problem:
 
-First, run the development server:
+"The current creator economy is broken. Platforms like YouTube impose restrictive monetization requirements – thousands of subscribers and watch hours – effectively excluding emerging creators. These centralized giants also extract exorbitant fees: 30% from Super Chats, up to 45% of ad revenue. Creators are trapped, their earnings siphoned off by corporations that control their content and audience."
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Solution:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+"Superpa.ge is a decentralized platform built on the Stellar blockchain that liberates creators. We're building a suite of tools that put creators first, fostering direct connections with their fans, and maximizing their earnings. Our Chrome extension allows fans to tip creators directly on platforms they already use. We're leveraging Stellar's high-speed, low-cost transactions to make tipping instant and accessible."
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key Features:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* **Direct-to-Creator Tipping:** "Our Chrome extension integrates seamlessly with existing social platforms, enabling fans to support creators directly with cryptocurrency. This bypasses platform fees and ensures creators receive the full value of their contributions."
 
-## Learn More
+* **Unified Creator Profiles:** "Creators can consolidate their entire online presence on Superpa.ge, linking all their social channels (YouTube, GitHub, Twitch, etc.). This provides a single, discoverable hub for their audience."
 
-To learn more about Next.js, take a look at the following resources:
+* **Web3 Powered Transactions:** "Built on the Stellar network, Superpa.ge offers transparent, secure, and low-cost transactions. This eliminates the need for intermediaries and empowers both creators and fans."
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Future Vision:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+"We're not just fixing the present; we're building the future of the creator economy. Our roadmap includes:"
 
-## Deploy on Vercel
+* **NFT Monetization:** "Creators will be able to mint NFTs from their social media content, creating new revenue streams and allowing fans to own a piece of their favorite creator's work. Fans can invest in the creator's content."
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+* **Recurring Subscriptions:** "We'll enable creators to offer tiered subscriptions, providing exclusive content and perks to their most dedicated supporters."
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* **Creator Stores:** "Creators can set up their own decentralized stores, selling merchandise and digital products directly to their audience."
+
+* **Multi-Platform Support:** "We're expanding beyond social media to support creators on platforms like GitHub and Twitch, providing a unified monetization solution across the creator ecosystem."
+
+## Team:
+
+"Our team combines expertise in blockchain development, web application design, and creator economy dynamics. We're passionate about empowering creators and building a more equitable digital landscape."
+
+## Links:
+
+* **Server Repo:** https://github.com/theidealmanish/superpage-server
+* **Extension Repo:** https://github.com/theidealmanish/superpage-extension
