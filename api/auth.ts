@@ -26,20 +26,17 @@ export const register = async ({
 	username,
 	email,
 	password,
-	walletAddress,
 }: {
 	name: string;
 	username: string;
 	email: string;
 	password: string;
-	walletAddress: string;
 }) => {
 	const response = await axios.post('/auth/register', {
 		name,
 		username,
 		email,
 		password,
-		walletAddress,
 	});
 	return response.data;
 };

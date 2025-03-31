@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
 	Loader2,
@@ -22,11 +28,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePolkadotPayment } from '@/hooks/usePolkadotPayment';
 
-export default function PaymentPage() {
-	const [recipient, setRecipient] = useState(
-		'1ZcadMuo1X7NWdNCk8vXZccqzKtoBKjQ4CFVNvpVbu1QPs2'
-	);
-	const [amount, setAmount] = useState('0.1');
+interface PaymentModalProps {
+	isOpen: boolean;
+	onClose: () => void;
+	recipientAddress: string;
+	defaultAmount?: string;
+	recipientName: string;
+}
+
+export default function PaymentModal({
+	isOpen,
+	onClose,
+	recipientAddress,
+	defaultAmount = '1',
+	recipientName,
+}: PaymentModalProps) {
+	const [recipient, setRecipient] = useState(recipientAddress);
+	const [amount, setAmount] = useState(defaultAmount);
 	const [hashCopied, setHashCopied] = useState(false);
 
 	const {
@@ -53,34 +71,37 @@ export default function PaymentPage() {
 		setAmount(value);
 	};
 
-	// Simple loading UI for SSR
-	if (!isClient) {
-		return (
-			<div className='container mx-auto mt-20 p-6 flex items-center justify-center min-h-screen'>
-				<Card className='w-full max-w-md'>
-					<CardHeader>
-						<CardTitle>Payment</CardTitle>
-					</CardHeader>
-					<CardContent className='flex justify-center py-6'>
-						<Loader2 className='h-8 w-8 animate-spin text-primary' />
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
+	// Reset modal state when it closes
+	const handleClose = () => {
+		if (txnState.status !== 'pending' && txnState.status !== 'preparing') {
+			if (txnState.status === 'success') {
+				resetTransaction();
+			}
+			onClose();
+		}
+	};
+
+	console.log(recipient);
 
 	return (
-		<div className='container mx-auto mt-20 p-4'>
-			<Card className='w-full max-w-md mx-auto gap-2 py-4'>
-				<CardHeader>
-					<CardTitle className='text-xl flex items-center justify-center font-semibold'>
-						<div>
-							<span className='mr-2'>💸</span>SuperPay
+		<Dialog open={isOpen} onOpenChange={handleClose}>
+			<DialogContent className='sm:max-w-md'>
+				<DialogHeader>
+					<DialogTitle className='text-center flex items-center justify-center'>
+						<span className='mr-2'>💸</span>
+						{recipientName ? `Support ${recipientName}` : 'SuperPay'}
+					</DialogTitle>
+					<DialogDescription className='text-center'>
+						Send DOT directly to the recipient's wallet
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className='space-y-4 pt-4'>
+					{!isClient ? (
+						<div className='flex justify-center py-6'>
+							<Loader2 className='h-8 w-8 animate-spin text-primary' />
 						</div>
-					</CardTitle>
-				</CardHeader>
-				<CardContent className='space-y-4'>
-					{!accounts.length ? (
+					) : !accounts.length ? (
 						<Button
 							onClick={connectWallet}
 							disabled={isLoading}
@@ -142,7 +163,7 @@ export default function PaymentPage() {
 							{/* Payment form */}
 							<div className='space-y-4'>
 								<div>
-									<Label htmlFor='recipient'>Recipient Address</Label>
+									<Label htmlFor='recipient'>Recipient</Label>
 									<Input
 										id='recipient'
 										value={recipient}
@@ -232,7 +253,7 @@ export default function PaymentPage() {
 												className='text-xs h-7'
 												onClick={() =>
 													window.open(
-														`https://polkadot.subscan.io/extrinsic/${txnState.hash}`,
+														`https://paseo.subscan.io/extrinsic/${txnState.hash}`,
 														'_blank'
 													)
 												}
@@ -247,9 +268,18 @@ export default function PaymentPage() {
 
 							{/* Action buttons */}
 							{txnState.status === 'success' ? (
-								<Button onClick={resetTransaction} className='w-full mt-2'>
-									Make Another Payment
-								</Button>
+								<div className='flex space-x-2'>
+									<Button onClick={resetTransaction} className='flex-1'>
+										Make Another Payment
+									</Button>
+									<Button
+										variant='secondary'
+										onClick={handleClose}
+										className='flex-1'
+									>
+										Close
+									</Button>
+								</div>
 							) : (
 								<Button
 									onClick={() => makePayment(recipient, amount)}
@@ -266,7 +296,7 @@ export default function PaymentPage() {
 											Processing...
 										</>
 									) : (
-										'Proceed to Payment'
+										'Send Payment'
 									)}
 								</Button>
 							)}
@@ -280,8 +310,8 @@ export default function PaymentPage() {
 							<AlertDescription>{connectionError}</AlertDescription>
 						</Alert>
 					)}
-				</CardContent>
-			</Card>
-		</div>
+				</div>
+			</DialogContent>
+		</Dialog>
 	);
 }

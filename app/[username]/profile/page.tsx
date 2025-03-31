@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -12,7 +11,7 @@ import {
 	Globe,
 	MapPin,
 	Twitter,
-	Facebook,
+	Youtube,
 	Linkedin,
 	Github,
 	Loader2,
@@ -50,6 +49,8 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useParams, useRouter } from 'next/navigation';
+import { getUsername } from '@/lib/getUsername';
 
 // Define the Profile interface
 interface Profile {
@@ -59,7 +60,7 @@ interface Profile {
 	country: string;
 	socials: {
 		twitter: string;
-		facebook: string;
+		youtube: string;
 		linkedin: string;
 		github: string;
 	};
@@ -71,7 +72,7 @@ const profileSchema = z.object({
 	country: z.string().min(1, { message: 'Please select a country' }),
 	socials: z.object({
 		twitter: z.string().optional(),
-		facebook: z.string().optional(),
+		youtube: z.string().optional(),
 		linkedin: z.string().optional(),
 		github: z.string().optional(),
 	}),
@@ -86,6 +87,7 @@ const countries = [
 	'Germany',
 	'France',
 	'Japan',
+	'Nepal',
 	'India',
 	'Brazil',
 	'Nigeria',
@@ -106,6 +108,9 @@ export default function ProfilePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const router = useRouter();
+	const [wallet, setWallet] = useState<any | null>(null);
+	let { username } = useParams();
+	username = getUsername(username);
 
 	const form = useForm<z.infer<typeof profileSchema>>({
 		resolver: zodResolver(profileSchema),
@@ -114,7 +119,7 @@ export default function ProfilePage() {
 			country: '',
 			socials: {
 				twitter: '',
-				facebook: '',
+				youtube: '',
 				linkedin: '',
 				github: '',
 			},
@@ -128,25 +133,31 @@ export default function ProfilePage() {
 				setIsLoading(true);
 
 				// First get user info
-				const userResponse = await axios.get('/api/auth/user');
-				setUser(userResponse.data);
+				const userResponse = await axios.get('/auth/current-user');
+				setUser(userResponse.data.data);
+				console.log(userResponse.data.data);
+
+				// get wallet
+				const walletResponse = await axios.get('/wallets/stellar/get-wallet');
+				setWallet(walletResponse.data.data.stellar.accountId);
+				console.log(walletResponse.data.data.stellar.accountId);
 
 				// Then get profile
-				const profileResponse = await axios.get('/api/profile');
-				setProfile(profileResponse.data);
+				const profileResponse = await axios.get(`/profile/${username}`);
+				setProfile(profileResponse.data.data);
+				console.log(profileResponse.data.data);
 
 				// Set form values
 				form.reset({
-					bio: profileResponse.data.bio,
-					country: profileResponse.data.country,
+					bio: profileResponse.data.data.bio,
+					country: profileResponse.data.data.country,
 					socials: {
-						twitter: profileResponse.data.socials.twitter || '',
-						facebook: profileResponse.data.socials.facebook || '',
-						linkedin: profileResponse.data.socials.linkedin || '',
-						github: profileResponse.data.socials.github || '',
+						twitter: profileResponse.data.data.socials.twitter || '',
+						youtube: profileResponse.data.data.socials.youtube || '',
+						linkedin: profileResponse.data.data.socials.linkedin || '',
+						github: profileResponse.data.data.socials.github || '',
 					},
 				});
-
 				setError(null);
 			} catch (err) {
 				console.error('Failed to fetch profile:', err);
@@ -161,11 +172,24 @@ export default function ProfilePage() {
 		fetchProfile();
 	}, []);
 
+	const createWallet = async () => {
+		try {
+			const response = await axios.post('/wallets/stellar/create-account');
+			console.log('Wallet created:', response.data.data);
+			setWallet(response.data.data.publicKey);
+		} catch (err) {
+			console.error('Failed to create wallet:', err);
+			setError('Failed to create wallet. Please try again.');
+		}
+	};
+
 	const onSubmit = async (values: z.infer<typeof profileSchema>) => {
 		setIsSaving(true);
 
 		try {
-			const response = await axios.patch('/api/profile', values);
+			const response = await axios.post('/profile', values);
+			console.log('Profile updated:', response.data);
+			router.push(`/${user.username}`);
 			setProfile(response.data);
 			setError(null);
 			setIsEditing(false);
@@ -179,7 +203,7 @@ export default function ProfilePage() {
 
 	if (isLoading) {
 		return (
-			<div className='container mx-auto'>
+			<div className='container mx-auto mt-16'>
 				<div className='max-w-3xl mx-auto'>
 					<div className='flex items-center gap-4 mb-6'>
 						<Skeleton className='h-16 w-16 rounded-full' />
@@ -209,7 +233,7 @@ export default function ProfilePage() {
 	}
 
 	return (
-		<div className='container mx-auto py-10'>
+		<div className='container mx-auto py-10 mt-16'>
 			<div className='max-w-3xl mx-auto'>
 				{error && (
 					<Alert className='mb-6'>
@@ -396,38 +420,22 @@ export default function ProfilePage() {
 												{/* Facebook */}
 												<FormField
 													control={form.control}
-													name='socials.facebook'
+													name='socials.youtube'
 													render={({ field }) => (
 														<FormItem>
 															<FormLabel className='flex items-center gap-2'>
-																<Facebook
-																	size={16}
-																	className='text-[#1877F2]'
-																/>
-																Facebook
+																<Youtube size={16} className='text-[#FF0000]' />
+																Youtube
 															</FormLabel>
 															{isEditing ? (
 																<>
 																	<FormControl>
-																		<Input
-																			placeholder='https://facebook.com/username'
-																			{...field}
-																		/>
+																		<Input placeholder='@username' {...field} />
 																	</FormControl>
 																	<FormMessage />
 																</>
-															) : profile?.socials?.facebook ? (
-																<a
-																	href={profile.socials.facebook}
-																	target='_blank'
-																	rel='noopener noreferrer'
-																	className='text-blue-600 hover:underline'
-																>
-																	{profile.socials.facebook.replace(
-																		'https://facebook.com/',
-																		''
-																	)}
-																</a>
+															) : profile?.socials?.youtube ? (
+																<span>{profile?.socials?.youtube}</span>
 															) : (
 																<span className='text-gray-400'>
 																	Not linked
@@ -494,10 +502,7 @@ export default function ProfilePage() {
 															{isEditing ? (
 																<>
 																	<FormControl>
-																		<Input
-																			placeholder='https://github.com/username'
-																			{...field}
-																		/>
+																		<Input placeholder='username' {...field} />
 																	</FormControl>
 																	<FormMessage />
 																</>
@@ -523,10 +528,34 @@ export default function ProfilePage() {
 												/>
 											</div>
 										</div>
+										<div>
+											{/* create wallet as well */}
+											<h3 className='text-lg font-medium mb-3'>Wallet</h3>
+											<div>
+												{/* button to create wallet */}
+
+												{!wallet ? (
+													<Button
+														variant='outline'
+														className='bg-primary hover:bg-primary/85 hover:text-white text-white h-10 cursor-pointer'
+														onClick={createWallet}
+														type='button'
+													>
+														<Globe size={16} className='text-white' />
+														Create Wallet
+													</Button>
+												) : (
+													<div className='flex items-center gap-2 text-gray-700'>
+														<Globe size={16} />
+														<span>{wallet}</span>
+													</div>
+												)}
+											</div>
+										</div>
 									</CardContent>
 
 									{isEditing && (
-										<CardFooter className='flex justify-end'>
+										<CardFooter className='flex justify-items-end mt-4'>
 											<Button type='submit' disabled={isSaving}>
 												{isSaving ? (
 													<>

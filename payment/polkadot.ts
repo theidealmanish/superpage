@@ -80,6 +80,7 @@ export async function sendPayment(
 					});
 				} else if (result.status.isFinalized) {
 					const finalizedHash = result.status.asFinalized.toString();
+					console.log(result);
 					updateState({
 						status: 'success',
 						message: 'Transaction successful!',
