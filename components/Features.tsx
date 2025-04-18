@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import Image from 'next/image';
+import { useRef } from 'react';
 import {
 	User,
 	Chrome,
@@ -25,7 +23,6 @@ const features = [
 		description:
 			'Consolidate your social media presence into a single, seamless hub. Link your YouTube, GitHub, Instagram, and more, making it effortless for fans to discover and support your work across all platforms.',
 		icon: <User className='h-6 w-6' />,
-		image: '/images/profile-icon.svg',
 		color: 'bg-blue-500/10 text-blue-500',
 	},
 	{
@@ -33,7 +30,6 @@ const features = [
 		description:
 			"Instantly empower creators with the 'Superpay' button on your favorite social platforms. Send direct, secure, and instant web3 tips, bypassing traditional middlemen and ensuring your support reaches creators directly.",
 		icon: <Chrome className='h-6 w-6' />,
-		image: '/images/chrome-extension.svg',
 		color: 'bg-purple-500/10 text-purple-500',
 	},
 	{
@@ -41,7 +37,6 @@ const features = [
 		description:
 			'Experience the transparency and security of blockchain technology. All transactions are conducted via web3 addresses, ensuring direct, low-fee, and trustworthy interactions between creators and supporters.',
 		icon: <Coins className='h-6 w-6' />,
-		image: '/images/web3-icon.svg',
 		color: 'bg-green-500/10 text-green-500',
 	},
 	{
@@ -71,36 +66,7 @@ const features = [
 ];
 
 export default function Features() {
-	const [activeFeature, setActiveFeature] = useState(0);
 	const carouselRef = useRef<HTMLDivElement>(null);
-
-	// Handle next/prev feature
-	const handleNext = () => {
-		setActiveFeature((prev) => (prev + 1) % features.length);
-	};
-
-	const handlePrev = () => {
-		setActiveFeature((prev) => (prev - 1 + features.length) % features.length);
-	};
-
-	// Handle feature card click
-	const handleFeatureClick = (index: number) => {
-		setActiveFeature(index);
-	};
-
-	// Scroll to active feature card on mobile
-	const scrollToActiveFeature = (index: number) => {
-		if (carouselRef.current) {
-			const card = carouselRef.current.children[index];
-			if (card) {
-				card.scrollIntoView({
-					behavior: 'smooth',
-					block: 'nearest',
-					inline: 'center',
-				});
-			}
-		}
-	};
 
 	return (
 		<section
@@ -131,11 +97,8 @@ export default function Features() {
 							className={cn(
 								'h-full transition-all duration-200 border overflow-hidden hover:shadow-md',
 								'group',
-								activeFeature === index
-									? 'border-primary shadow-lg shadow-primary/10'
-									: 'border-border hover:border-primary/50'
+								'border-border hover:border-primary/50'
 							)}
-							onClick={() => handleFeatureClick(index)}
 						>
 							<CardContent className='p-6 flex flex-col h-full'>
 								<div
@@ -154,15 +117,6 @@ export default function Features() {
 										{feature.description}
 									</p>
 								</div>
-								<div className='h-36 mt-6 bg-muted/50 rounded-lg overflow-hidden'>
-									<Image
-										src={feature.image}
-										alt={feature.title}
-										width={240}
-										height={144}
-										className='w-full h-full object-contain p-2'
-									/>
-								</div>
 							</CardContent>
 						</Card>
 					))}
@@ -179,17 +133,12 @@ export default function Features() {
 								<div
 									key={index}
 									className='snap-center shrink-0 w-[85%] max-w-sm'
-									onClick={() => {
-										handleFeatureClick(index);
-										scrollToActiveFeature(index);
-									}}
 								>
 									<Card
 										className={cn(
 											'h-full cursor-pointer transition-all',
-											activeFeature === index
-												? 'border-primary shadow-lg'
-												: 'border-muted'
+
+											'border-muted'
 										)}
 									>
 										<CardContent className='p-6 flex flex-col h-full'>
@@ -207,15 +156,6 @@ export default function Features() {
 											<p className='text-muted-foreground text-sm flex-grow'>
 												{feature.description}
 											</p>
-											<div className='mt-4 h-32 bg-muted rounded-md overflow-hidden'>
-												<Image
-													src={feature.image}
-													alt={feature.title}
-													width={200}
-													height={128}
-													className='w-full h-full object-contain p-2'
-												/>
-											</div>
 										</CardContent>
 									</Card>
 								</div>
@@ -224,36 +164,18 @@ export default function Features() {
 
 						{/* Navigation buttons - Mobile */}
 						<div className='mt-6 flex justify-center items-center gap-4'>
-							<Button
-								variant='outline'
-								size='icon'
-								onClick={handlePrev}
-								className='rounded-full'
-							>
+							<Button variant='outline' size='icon' className='rounded-full'>
 								<ChevronLeft className='h-5 w-5' />
 							</Button>
 							<div className='flex gap-1.5'>
 								{features.map((_, index) => (
 									<button
 										key={index}
-										onClick={() => {
-											handleFeatureClick(index);
-											scrollToActiveFeature(index);
-										}}
-										className={cn(
-											'w-2.5 h-2.5 rounded-full transition-colors',
-											activeFeature === index ? 'bg-primary' : 'bg-muted'
-										)}
 										aria-label={`Go to feature ${index + 1}`}
 									/>
 								))}
 							</div>
-							<Button
-								variant='outline'
-								size='icon'
-								onClick={handleNext}
-								className='rounded-full'
-							>
+							<Button variant='outline' size='icon' className='rounded-full'>
 								<ChevronRight className='h-5 w-5' />
 							</Button>
 						</div>
