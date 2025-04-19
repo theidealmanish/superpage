@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a basic axios instance without auth headers initially
 const axiosInstance = axios.create({
-	baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+	baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.superpa.ge',
 	withCredentials: true,
 });
 
