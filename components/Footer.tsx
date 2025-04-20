@@ -11,17 +11,19 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
 
 	return (
 		<footer
-			className={cn('bg-white border-t border-gray-200 py-12', className)}
+			className={cn(
+				'w-full bg-white border-t border-gray-200 py-12',
+				className
+			)}
 		>
-			<div className='container mx-auto px-4 md:px-6'>
+			<div className='container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl'>
 				{/* Main footer content */}
-				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12'>
+				<div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-8 mb-12'>
 					{/* Company info */}
 					<div>
 						<h3 className='font-bold text-xl text-primary mb-4'>SuperPage</h3>
 						<p className='text-gray-600 mb-4'>
-							Build beautiful landing pages in minutes without any coding
-							skills.
+							Your frontpage on the internet and web3. Claim your page.
 						</p>
 						<div className='flex space-x-4'>
 							<Link
@@ -73,122 +75,84 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
 							</Link>
 						</div>
 					</div>
+					<div className='flex w-full justify-between'>
+						{/* Product links */}
+						<div>
+							<h3 className='font-semibold text-gray-900 mb-4'>Product</h3>
+							<ul className='space-y-2'>
+								<li>
+									<Link
+										href='/features'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Features
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/pricing'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Pricing
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/templates'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Templates
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/roadmap'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Roadmap
+									</Link>
+								</li>
+							</ul>
+						</div>
 
-					{/* Product links */}
-					<div>
-						<h3 className='font-semibold text-gray-900 mb-4'>Product</h3>
-						<ul className='space-y-2'>
-							<li>
-								<Link
-									href='/features'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Features
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/pricing'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Pricing
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/templates'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Templates
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/roadmap'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Roadmap
-								</Link>
-							</li>
-						</ul>
-					</div>
-
-					{/* Resources links */}
-					<div>
-						<h3 className='font-semibold text-gray-900 mb-4'>Resources</h3>
-						<ul className='space-y-2'>
-							<li>
-								<Link
-									href='/blog'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Blog
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/documentation'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Documentation
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/help'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Help Center
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/community'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Community
-								</Link>
-							</li>
-						</ul>
-					</div>
-
-					{/* Company links */}
-					<div>
-						<h3 className='font-semibold text-gray-900 mb-4'>Company</h3>
-						<ul className='space-y-2'>
-							<li>
-								<Link
-									href='/about'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									About Us
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/careers'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Careers
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/contact'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Contact
-								</Link>
-							</li>
-							<li>
-								<Link
-									href='/privacy'
-									className='text-gray-600 hover:text-primary transition-colors'
-								>
-									Privacy Policy
-								</Link>
-							</li>
-						</ul>
+						{/* Company links */}
+						<div>
+							<h3 className='font-semibold text-gray-900 mb-4'>Company</h3>
+							<ul className='space-y-2'>
+								<li>
+									<Link
+										href='/about'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										About Us
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/careers'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Careers
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/contact'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Contact
+									</Link>
+								</li>
+								<li>
+									<Link
+										href='/privacy'
+										className='text-gray-600 hover:text-primary transition-colors'
+									>
+										Privacy Policy
+									</Link>
+								</li>
+							</ul>
+						</div>
 					</div>
 				</div>
 
