@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { register } from '@/api/auth';
-import { useSearchParams } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Form validation schema matching the User interface
 const signUpSchema = z.object({
@@ -49,7 +49,8 @@ const signUpSchema = z.object({
 		.max(100, { message: 'Password must be less than 100 characters' }),
 });
 
-export default function SignUpPage() {
+// Create a separate component for the form content that uses the search params
+function RegisterForm() {
 	const router = useRouter();
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +67,13 @@ export default function SignUpPage() {
 			password: '',
 		},
 	});
+
+	// If username param changes, update the form
+	useEffect(() => {
+		if (username) {
+			form.setValue('username', username);
+		}
+	}, [username, form]);
 
 	async function onSubmit(values: z.infer<typeof signUpSchema>) {
 		setIsLoading(true);
@@ -93,14 +101,152 @@ export default function SignUpPage() {
 			});
 	}
 
-	// Get a shortened address for display
-	const shortenAddress = (address: string) => {
-		if (!address) return '';
-		return `${address.substring(0, 6)}...${address.substring(
-			address.length - 4
-		)}`;
-	};
+	return (
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+				<FormField
+					control={form.control}
+					name='name'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Full Name</FormLabel>
+							<FormControl>
+								<Input placeholder='John Doe' {...field} disabled={isLoading} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name='username'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Username</FormLabel>
+							<FormControl>
+								<Input placeholder='johndoe' {...field} disabled={isLoading} />
+							</FormControl>
+							<FormDescription className='text-xs'>
+								Your unique username for SuperPage
+							</FormDescription>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
+				<FormField
+					control={form.control}
+					name='email'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Email</FormLabel>
+							<FormControl>
+								<Input
+									type='email'
+									placeholder='name@example.com'
+									{...field}
+									disabled={isLoading}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<FormField
+					control={form.control}
+					name='password'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Password</FormLabel>
+							<div className='relative'>
+								<FormControl>
+									<Input
+										type={showPassword ? 'text' : 'password'}
+										placeholder='••••••••'
+										{...field}
+										disabled={isLoading}
+									/>
+								</FormControl>
+								<Button
+									type='button'
+									variant='ghost'
+									size='sm'
+									className='absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent'
+									onClick={() => setShowPassword(!showPassword)}
+									disabled={isLoading}
+								>
+									{showPassword ? (
+										<EyeOff className='h-4 w-4 text-gray-400' />
+									) : (
+										<Eye className='h-4 w-4 text-gray-400' />
+									)}
+								</Button>
+							</div>
+							<FormDescription className='text-xs'>
+								Must be at least 8 characters
+							</FormDescription>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<Button type='submit' className='w-full' disabled={isLoading}>
+					{isLoading ? (
+						<span className='flex items-center'>
+							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+							Creating account...
+						</span>
+					) : (
+						<>
+							Create Account
+							<ArrowRight className='ml-2 h-4 w-4' />
+						</>
+					)}
+				</Button>
+			</form>
+
+			{error && (
+				<Alert variant='destructive' className='mt-6'>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
+		</Form>
+	);
+}
+
+// Fallback component to show while loading
+function RegisterFormSkeleton() {
+	return (
+		<div className='space-y-6'>
+			<div className='space-y-2'>
+				<Skeleton className='h-5 w-20' />
+				<Skeleton className='h-10 w-full' />
+			</div>
+
+			<div className='space-y-2'>
+				<Skeleton className='h-5 w-20' />
+				<Skeleton className='h-10 w-full' />
+				<Skeleton className='h-4 w-40' />
+			</div>
+
+			<div className='space-y-2'>
+				<Skeleton className='h-5 w-20' />
+				<Skeleton className='h-10 w-full' />
+			</div>
+
+			<div className='space-y-2'>
+				<Skeleton className='h-5 w-20' />
+				<Skeleton className='h-10 w-full' />
+				<Skeleton className='h-4 w-40' />
+			</div>
+
+			<Skeleton className='h-10 w-full' />
+		</div>
+	);
+}
+
+export default function SignUpPage() {
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
 			<Card className='w-full max-w-xl'>
@@ -111,124 +257,9 @@ export default function SignUpPage() {
 				</CardHeader>
 
 				<CardContent>
-					{error && (
-						<Alert variant='destructive' className='mb-6'>
-							<AlertDescription>{error}</AlertDescription>
-						</Alert>
-					)}
-
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-							<FormField
-								control={form.control}
-								name='name'
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Full Name</FormLabel>
-										<FormControl>
-											<Input
-												placeholder='John Doe'
-												{...field}
-												disabled={isLoading}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name='username'
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Username</FormLabel>
-										<FormControl>
-											<Input
-												placeholder='johndoe'
-												{...field}
-												disabled={isLoading}
-											/>
-										</FormControl>
-										<FormDescription className='text-xs'>
-											Your unique username for SuperPage
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							<FormField
-								control={form.control}
-								name='email'
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Email</FormLabel>
-										<FormControl>
-											<Input
-												type='email'
-												placeholder='name@example.com'
-												{...field}
-												disabled={isLoading}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							<FormField
-								control={form.control}
-								name='password'
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Password</FormLabel>
-										<div className='relative'>
-											<FormControl>
-												<Input
-													type={showPassword ? 'text' : 'password'}
-													placeholder='••••••••'
-													{...field}
-													disabled={isLoading}
-												/>
-											</FormControl>
-											<Button
-												type='button'
-												variant='ghost'
-												size='sm'
-												className='absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent'
-												onClick={() => setShowPassword(!showPassword)}
-												disabled={isLoading}
-											>
-												{showPassword ? (
-													<EyeOff className='h-4 w-4 text-gray-400' />
-												) : (
-													<Eye className='h-4 w-4 text-gray-400' />
-												)}
-											</Button>
-										</div>
-										<FormDescription className='text-xs'>
-											Must be at least 8 characters
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							<Button type='submit' className='w-full' disabled={isLoading}>
-								{isLoading ? (
-									<span className='flex items-center'>
-										<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-										Creating account...
-									</span>
-								) : (
-									<>
-										Create Account
-										<ArrowRight className='ml-2 h-4 w-4' />
-									</>
-								)}
-							</Button>
-						</form>
-					</Form>
+					<Suspense fallback={<RegisterFormSkeleton />}>
+						<RegisterForm />
+					</Suspense>
 				</CardContent>
 
 				<CardFooter className='flex flex-col items-center space-y-4 border-t pt-6'>
@@ -253,7 +284,7 @@ export default function SignUpPage() {
 					<div className='text-sm'>
 						Already have an account?{' '}
 						<Link
-							href='/signin'
+							href='/login'
 							className='text-primary font-medium hover:underline'
 						>
 							Sign in
