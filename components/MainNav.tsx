@@ -12,8 +12,9 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, User } from 'lucide-react';
 import axios from '@/lib/axios';
+import Image from 'next/image';
 
 interface MainNavProps {
 	className?: string;
@@ -64,18 +65,15 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 	useEffect(() => {
 		const controlNavbar = () => {
 			if (typeof window !== 'undefined') {
-				// Check if scrolled more than 20px to add transparency
-				if (window.scrollY > 20) {
+				if (window.scrollY > 50) {
 					setIsScrolled(true);
 				} else {
 					setIsScrolled(false);
 				}
 
-				// Hide on scroll down, show on scroll up
-				if (window.scrollY > lastScrollY + 10) {
-					// Added threshold to avoid flickering
+				if (window.scrollY > lastScrollY + 20) {
 					setIsVisible(false);
-				} else if (window.scrollY < lastScrollY - 10) {
+				} else if (window.scrollY < lastScrollY - 20) {
 					setIsVisible(true);
 				}
 
@@ -115,9 +113,9 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 	return (
 		<nav
 			className={cn(
-				'fixed top-2 w-11/12 max-w-6xl mx-auto left-0 right-0 z-50 px-6 py-4 transition-all duration-300 rounded-lg',
+				'fixed top-4 w-11/12 max-w-6xl mx-auto left-0 right-0 z-50 px-6 py-4 transition-all duration-300 rounded-full',
 				isScrolled
-					? 'bg-white/70 backdrop-blur-md shadow-md'
+					? 'bg-white/50 backdrop-blur-sm shadow-md'
 					: 'bg-transparent',
 				isVisible ? 'transform translate-y-0' : 'transform -translate-y-[150%]',
 				className
@@ -125,7 +123,13 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 		>
 			<div className='flex items-center justify-between'>
 				<Link href='/' className='font-bold text-xl text-primary'>
-					SuperPage
+					<Image
+						src='/images/super.png'
+						alt='SuperPage Logo'
+						width={48}
+						height={48}
+						className='mr-2'
+					/>
 				</Link>
 
 				<div className='flex items-center space-x-4'>
@@ -177,8 +181,8 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 							<Link
 								href='/register'
 								className={cn(
-									'px-4 py-2 rounded-md text-white bg-primary',
-									'hover:bg-primary/90 transition-colors'
+									'px-4 py-2 text-white bg-primary rounded-full',
+									'hover:bg-orange/90 transition-colors'
 								)}
 							>
 								Register
