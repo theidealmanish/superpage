@@ -69,10 +69,7 @@ export default function Features() {
 	const carouselRef = useRef<HTMLDivElement>(null);
 
 	return (
-		<section
-			id='features'
-			className='py-16 md:py-24 bg-gradient-to-b from-background to-muted/30'
-		>
+		<section id='features' className='py-16 md:py-24'>
 			<div className='container px-4 md:px-6'>
 				<div className='text-center mb-12'>
 					<Badge variant='outline' className='mb-2'>
@@ -84,8 +81,7 @@ export default function Features() {
 					</h2>
 					<p className='text-muted-foreground max-w-3xl mx-auto'>
 						Superpa.ge empowers creators and supporters with innovative tools
-						for direct engagement, fair compensation, and meaningful
-						connections.
+						for direct engagement, interactive, and meaningful connections.
 					</p>
 				</div>
 
