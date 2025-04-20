@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
-	CardDescription,
 	CardFooter,
 	CardHeader,
 	CardTitle,
@@ -27,13 +26,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { register } from '@/api/auth';
+import { useSearchParams } from 'next/navigation';
 
 // Form validation schema matching the User interface
 const signUpSchema = z.object({
@@ -60,12 +54,14 @@ export default function SignUpPage() {
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const params = useSearchParams();
+	const username = params.get('username');
 
 	const form = useForm<z.infer<typeof signUpSchema>>({
 		resolver: zodResolver(signUpSchema),
 		defaultValues: {
 			name: '',
-			username: '',
+			username: username || '',
 			email: '',
 			password: '',
 		},
@@ -112,9 +108,6 @@ export default function SignUpPage() {
 					<CardTitle className='text-2xl font-bold text-center'>
 						Create your account
 					</CardTitle>
-					<CardDescription className='text-center'>
-						Enter your information to get started with SuperPage
-					</CardDescription>
 				</CardHeader>
 
 				<CardContent>

@@ -68,6 +68,10 @@ export default function SignInPage() {
 			})
 			.catch((error) => {
 				// Handle login error
+				console.log(error);
+				toast.error(
+					error.response.data.message || 'Login failed. Please try again.'
+				);
 				console.error('Login error:', error.response.data.message);
 				setError(error.response.data.message);
 			})
@@ -197,34 +201,6 @@ export default function SignInPage() {
 							</Button>
 						</form>
 					</Form>
-
-					<div className='relative my-6'>
-						<div className='absolute inset-0 flex items-center'>
-							<div className='w-full border-t border-gray-200' />
-						</div>
-						<div className='relative flex justify-center text-sm'>
-							<span className='px-2 bg-white text-gray-500'>Or</span>
-						</div>
-					</div>
-
-					<div className='grid grid-cols-1 gap-2'>
-						<Button
-							variant='outline'
-							type='button'
-							className='w-full'
-							disabled={isLoading}
-						>
-							Continue with Google
-						</Button>
-						<Button
-							variant='outline'
-							type='button'
-							className='w-full'
-							disabled={isLoading}
-						>
-							Connect with Wallet
-						</Button>
-					</div>
 				</CardContent>
 
 				<CardFooter className='flex justify-center p-6 border-t'>
