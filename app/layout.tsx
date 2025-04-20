@@ -30,9 +30,8 @@ export default function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<MainNav />
-				<main className=''>{children}</main>
+				<main>{children}</main>
 				<Toaster richColors />
-				{/* <Footer /> */}
 			</body>
 		</html>
 	);
