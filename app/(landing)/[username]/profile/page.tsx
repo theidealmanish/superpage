@@ -61,7 +61,7 @@ interface Profile {
 	bio: string;
 	country: string;
 	socials: {
-		twitter: string;
+		x: string;
 		youtube: string;
 		linkedin: string;
 		github: string;
@@ -78,7 +78,7 @@ const profileSchema = z.object({
 	bio: z.string().max(500, { message: 'Bio must be less than 500 characters' }),
 	country: z.string().min(1, { message: 'Please select a country' }),
 	socials: z.object({
-		twitter: z.string().optional(),
+		x: z.string().optional(),
 		youtube: z.string().optional(),
 		linkedin: z.string().optional(),
 		github: z.string().optional(),
@@ -137,7 +137,7 @@ export default function ProfilePage() {
 			bio: '',
 			country: '',
 			socials: {
-				twitter: '',
+				x: '',
 				youtube: '',
 				linkedin: '',
 				github: '',
@@ -169,7 +169,7 @@ export default function ProfilePage() {
 					bio: profileResponse.data.data.bio,
 					country: profileResponse.data.data.country,
 					socials: {
-						twitter: profileResponse.data.data.socials.twitter || '',
+						x: profileResponse.data.data.socials.x || '',
 						youtube: profileResponse.data.data.socials.youtube || '',
 						linkedin: profileResponse.data.data.socials.linkedin || '',
 						github: profileResponse.data.data.socials.github || '',
@@ -393,12 +393,12 @@ export default function ProfilePage() {
 												{/* Twitter */}
 												<FormField
 													control={form.control}
-													name='socials.twitter'
+													name='socials.x'
 													render={({ field }) => (
 														<FormItem>
 															<FormLabel className='flex items-center gap-2'>
 																<Twitter size={16} className='text-[#1DA1F2]' />
-																Twitter
+																Twitter (X)
 															</FormLabel>
 															{isEditing ? (
 																<>
@@ -407,16 +407,14 @@ export default function ProfilePage() {
 																	</FormControl>
 																	<FormMessage />
 																</>
-															) : profile?.socials?.twitter ? (
+															) : profile?.socials?.x ? (
 																<a
-																	href={
-																		'https://x.com/' + profile.socials.twitter
-																	}
+																	href={'https://x.com/' + profile.socials.x}
 																	target='_blank'
 																	rel='noopener noreferrer'
 																	className='hover:underline'
 																>
-																	{profile.socials.twitter}
+																	{profile.socials.x}
 																</a>
 															) : (
 																<span className='text-gray-400'>

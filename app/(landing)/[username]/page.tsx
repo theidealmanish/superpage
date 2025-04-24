@@ -35,7 +35,7 @@ interface Profile {
 	bio: string;
 	country: string;
 	socials: {
-		twitter: string;
+		x: string;
 		youtube: string;
 		linkedin: string;
 		github: string;
@@ -182,14 +182,14 @@ export default function UserProfilePage() {
 					</Button>
 
 					{/* Social Media Links */}
-					{profile.socials?.twitter && (
+					{profile.socials?.x && (
 						<Button
 							variant='outline'
 							className='w-full bg-white hover:bg-[#1DA1F2]/10 border-[#1DA1F2]/30 h-12'
 							asChild
 						>
 							<a
-								href={`https://x.com/${profile.socials.twitter}`}
+								href={`https://x.com/${profile.socials.x}`}
 								target='_blank'
 								rel='noopener noreferrer'
 							>
