@@ -189,12 +189,12 @@ export default function UserProfilePage() {
 							asChild
 						>
 							<a
-								href={`https://twitter.com/${profile.socials.twitter}`}
+								href={`https://x.com/${profile.socials.twitter}`}
 								target='_blank'
 								rel='noopener noreferrer'
 							>
 								<Twitter className='h-5 w-5 mr-2 text-[#1DA1F2]' />
-								Twitter
+								Twitter (X)
 								<ExternalLink className='h-4 w-4 ml-auto' />
 							</a>
 						</Button>

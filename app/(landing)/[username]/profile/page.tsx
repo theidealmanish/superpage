@@ -51,6 +51,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useParams, useRouter } from 'next/navigation';
 import { getUsername } from '@/lib/getUsername';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
+import { toast } from 'sonner';
 
 // Define the Profile interface
 interface Profile {
@@ -64,6 +66,11 @@ interface Profile {
 		linkedin: string;
 		github: string;
 	};
+	wallets: {
+		sui: string;
+		solana: string;
+		ethereum: string;
+	};
 }
 
 // Create form validation schema
@@ -75,6 +82,9 @@ const profileSchema = z.object({
 		youtube: z.string().optional(),
 		linkedin: z.string().optional(),
 		github: z.string().optional(),
+	}),
+	wallets: z.object({
+		sui: z.string().optional(),
 	}),
 });
 
@@ -100,6 +110,14 @@ const countries = [
 	'South Korea',
 ];
 
+const formatWalletAddress = (address: string): string => {
+	if (!address) return '';
+	if (address.length <= 14) return address;
+	return `${address.substring(0, 6)}...${address.substring(
+		address.length - 4
+	)}`;
+};
+
 export default function ProfilePage() {
 	const [profile, setProfile] = useState<Profile | null>(null);
 	const [user, setUser] = useState<any | null>(null);
@@ -108,7 +126,8 @@ export default function ProfilePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const router = useRouter();
-	const [wallet, setWallet] = useState<any | null>(null);
+	const suiAccount = useCurrentAccount();
+
 	let { username } = useParams();
 	username = getUsername(username);
 
@@ -123,6 +142,9 @@ export default function ProfilePage() {
 				linkedin: '',
 				github: '',
 			},
+			wallets: {
+				sui: '',
+			},
 		},
 	});
 
@@ -136,11 +158,6 @@ export default function ProfilePage() {
 				const userResponse = await axios.get('/auth/current-user');
 				setUser(userResponse.data.data);
 				console.log(userResponse.data.data);
-
-				// get wallet
-				const walletResponse = await axios.get('/wallets/stellar/get-wallet');
-				setWallet(walletResponse.data.data.stellar.accountId);
-				console.log(walletResponse.data.data.stellar.accountId);
 
 				// Then get profile
 				const profileResponse = await axios.get(`/profile/${username}`);
@@ -157,13 +174,14 @@ export default function ProfilePage() {
 						linkedin: profileResponse.data.data.socials.linkedin || '',
 						github: profileResponse.data.data.socials.github || '',
 					},
+					wallets: {
+						sui: profileResponse.data.data?.wallets?.sui || '',
+					},
 				});
 				setError(null);
 			} catch (err) {
-				console.error('Failed to fetch profile:', err);
-				setError(
-					'Failed to load profile data. You may need to create a profile first.'
-				);
+				console.error('Error fetching profile:', err);
+				toast.error('Failed to load profile');
 			} finally {
 				setIsLoading(false);
 			}
@@ -172,20 +190,22 @@ export default function ProfilePage() {
 		fetchProfile();
 	}, []);
 
-	const createWallet = async () => {
-		try {
-			const response = await axios.post('/wallets/stellar/create-account');
-			console.log('Wallet created:', response.data.data);
-			setWallet(response.data.data.publicKey);
-		} catch (err) {
-			console.error('Failed to create wallet:', err);
-			setError('Failed to create wallet. Please try again.');
-		}
-	};
-
 	const onSubmit = async (values: z.infer<typeof profileSchema>) => {
 		setIsSaving(true);
 
+		if (suiAccount?.address) {
+			values.wallets.sui = suiAccount.address;
+		} else {
+			values.wallets.sui = '';
+		}
+
+		if (!values.wallets.sui) {
+			toast.error('Please connect your Sui wallet.');
+			setIsSaving(false);
+			return;
+		}
+
+		console.log('Form values:', values);
 		try {
 			const response = await axios.post('/profile', values);
 			console.log('Profile updated:', response.data);
@@ -235,12 +255,6 @@ export default function ProfilePage() {
 	return (
 		<div className='container mx-auto py-10 mt-16'>
 			<div className='max-w-3xl mx-auto'>
-				{error && (
-					<Alert className='mb-6'>
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-
 				<div className='flex flex-col sm:flex-row sm:items-center gap-4 mb-8'>
 					<Avatar className='h-16 w-16 sm:h-20 sm:w-20'>
 						<AvatarImage
@@ -389,24 +403,20 @@ export default function ProfilePage() {
 															{isEditing ? (
 																<>
 																	<FormControl>
-																		<Input
-																			placeholder='https://twitter.com/username'
-																			{...field}
-																		/>
+																		<Input placeholder='username' {...field} />
 																	</FormControl>
 																	<FormMessage />
 																</>
 															) : profile?.socials?.twitter ? (
 																<a
-																	href={profile.socials.twitter}
+																	href={
+																		'https://x.com/' + profile.socials.twitter
+																	}
 																	target='_blank'
 																	rel='noopener noreferrer'
-																	className='text-blue-500 hover:underline'
+																	className='hover:underline'
 																>
-																	{profile.socials.twitter.replace(
-																		'https://twitter.com/',
-																		'@'
-																	)}
+																	{profile.socials.twitter}
 																</a>
 															) : (
 																<span className='text-gray-400'>
@@ -435,7 +445,17 @@ export default function ProfilePage() {
 																	<FormMessage />
 																</>
 															) : profile?.socials?.youtube ? (
-																<span>{profile?.socials?.youtube}</span>
+																<a
+																	href={
+																		'https://youtube.com/@' +
+																		profile.socials.youtube
+																	}
+																	target='_blank'
+																	rel='noopener noreferrer'
+																	className='hover:underline'
+																>
+																	{profile.socials.youtube}
+																</a>
 															) : (
 																<span className='text-gray-400'>
 																	Not linked
@@ -461,24 +481,21 @@ export default function ProfilePage() {
 															{isEditing ? (
 																<>
 																	<FormControl>
-																		<Input
-																			placeholder='https://linkedin.com/in/username'
-																			{...field}
-																		/>
+																		<Input placeholder='username' {...field} />
 																	</FormControl>
 																	<FormMessage />
 																</>
 															) : profile?.socials?.linkedin ? (
 																<a
-																	href={profile.socials.linkedin}
+																	href={
+																		'https://github.com/' +
+																		profile.socials.github
+																	}
 																	target='_blank'
 																	rel='noopener noreferrer'
-																	className='text-[#0A66C2] hover:underline'
+																	className='hover:underline'
 																>
-																	{profile.socials.linkedin.replace(
-																		'https://linkedin.com/in/',
-																		''
-																	)}
+																	{profile.socials.linkedin}
 																</a>
 															) : (
 																<span className='text-gray-400'>
@@ -508,15 +525,15 @@ export default function ProfilePage() {
 																</>
 															) : profile?.socials?.github ? (
 																<a
-																	href={profile.socials.github}
+																	href={
+																		'https://github.com/' +
+																		profile.socials.github
+																	}
 																	target='_blank'
 																	rel='noopener noreferrer'
 																	className='hover:underline'
 																>
-																	{profile.socials.github.replace(
-																		'https://github.com/',
-																		''
-																	)}
+																	{profile.socials.github}
 																</a>
 															) : (
 																<span className='text-gray-400'>
@@ -528,28 +545,113 @@ export default function ProfilePage() {
 												/>
 											</div>
 										</div>
-										<div>
-											{/* create wallet as well */}
-											<h3 className='text-lg font-medium mb-3'>Wallet</h3>
-											<div>
-												{/* button to create wallet */}
 
-												{!wallet ? (
-													<Button
-														variant='outline'
-														className='bg-primary hover:bg-primary/85 hover:text-white text-white h-10 cursor-pointer'
-														onClick={createWallet}
-														type='button'
-													>
-														<Globe size={16} className='text-white' />
-														Create Wallet
-													</Button>
-												) : (
-													<div className='flex items-center gap-2 text-gray-700'>
-														<Globe size={16} />
-														<span>{wallet}</span>
-													</div>
-												)}
+										{/* Wallets Section */}
+										<div>
+											<h3 className='text-lg font-medium mb-3'>Wallets</h3>
+											<div className='space-y-4'>
+												{/* SUI Wallet */}
+												<FormField
+													control={form.control}
+													name='wallets.sui'
+													render={({ field }) => (
+														<FormItem>
+															<div className='bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-100'>
+																<div className='flex items-center justify-between'>
+																	<div className='flex items-center gap-3'>
+																		<div className='bg-blue-100 p-2 rounded-full'>
+																			<svg
+																				width='20'
+																				height='20'
+																				viewBox='0 0 128 128'
+																				fill='none'
+																				xmlns='http://www.w3.org/2000/svg'
+																			>
+																				<path
+																					d='M91.5572 101.084C86.6873 109.406 78.4937 112 63.9998 112C49.5058 112 41.3122 109.456 36.4423 101.084C31.5724 92.7123 31.5724 80.8059 36.4423 53.9081C41.3122 26.9603 49.5058 17.0879 63.9998 17.0879C78.4937 17.0879 86.6873 26.9603 91.5572 53.9081C96.4271 80.8059 96.4271 92.7123 91.5572 101.084Z'
+																					fill='#6CBBEB'
+																				/>
+																				<path
+																					d='M35.6574 71.9069C27.3353 70.5821 23.1742 67.5888 21 61.0802C21 61.0802 22.4262 68.364 30.5326 75.1486C38.6391 81.9332 52.4524 79.9338 52.4524 79.9338C44.6595 77.9345 41.664 72.7911 35.6574 71.9069Z'
+																					fill='#4599DC'
+																				/>
+																				<path
+																					d='M93.4946 71.9069C101.782 70.5821 105.958 67.5888 108.132 61.0802C108.132 61.0802 106.706 68.364 98.6188 75.1486C90.5316 81.9332 76.789 79.9338 76.789 79.9338C84.5326 77.9345 87.488 72.7911 93.4946 71.9069Z'
+																					fill='#4599DC'
+																				/>
+																			</svg>
+																		</div>
+																		<div>
+																			<div className='font-medium'>
+																				Sui Network
+																			</div>
+																			<div className='text-sm text-gray-500'>
+																				Connect your Sui wallet to receive
+																				rewards
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Conditional rendering for wallet status */}
+																	{isEditing ? (
+																		// If editing mode and we have a wallet address from the database
+																		profile?.wallets?.sui ? (
+																			<div className='flex flex-col items-end'>
+																				<div className='flex items-center gap-2'>
+																					<div className='h-2 w-2 rounded-full bg-green-500'></div>
+																					<span className='text-sm text-green-600 font-medium'>
+																						Connected
+																					</span>
+																				</div>
+																				<div className='font-mono text-xs text-gray-500 mt-1'>
+																					{formatWalletAddress(
+																						profile?.wallets?.sui || ''
+																					)}
+																				</div>
+																				{/* Option to change wallet */}
+																				<Button
+																					variant='ghost'
+																					size='sm'
+																					className='text-xs text-blue-500 hover:text-blue-600 mt-1 p-0 h-auto'
+																					onClick={() => {
+																						form.setValue(
+																							'wallets.sui',
+																							suiAccount?.address
+																						); // Clear the wallet value in form
+																					}}
+																				>
+																					Change wallet
+																				</Button>
+																			</div>
+																		) : (
+																			// If editing mode but no wallet connected - show connect button
+																			<ConnectButton
+																				connectText='Connect Sui Wallet'
+																				className='bg-blue-500 hover:bg-blue-600 text-white'
+																			/>
+																		)
+																	) : // View mode - just show the wallet if it exists
+																	profile?.wallets?.sui ? (
+																		<div className='flex items-center gap-2'>
+																			<div className='h-2 w-2 rounded-full bg-green-500'></div>
+																			<span className='font-mono text-sm'>
+																				{formatWalletAddress(
+																					profile.wallets.sui
+																				)}
+																			</span>
+																		</div>
+																	) : (
+																		<span className='text-sm text-gray-400'>
+																			Not connected
+																		</span>
+																	)}
+																</div>
+															</div>
+														</FormItem>
+													)}
+												/>
+
+												{/* You can add more wallet types here with similar logic */}
 											</div>
 										</div>
 									</CardContent>

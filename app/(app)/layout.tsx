@@ -152,54 +152,52 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 	);
 
 	return (
-		<html lang='en'>
-			<body>
-				<div className='flex min-h-screen'>
-					{/* Desktop Sidebar */}
-					<div className='hidden sm:flex sm:flex-col border-r border-gray-200 w-[80px] lg:w-[280px] p-2'>
-						<NavContent />
-					</div>
-
-					{/* Mobile Sidebar */}
-					<div className='sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-2'>
-						<div className='flex justify-around'>
-							{navigation.slice(0, 5).map((item) => {
-								const isActive = pathname === item.href;
-								return (
-									<Link
-										key={item.name}
-										href={item.href}
-										className='flex flex-col items-center px-3 py-2'
-									>
-										<item.icon
-											className={cn(
-												'h-6 w-6',
-												isActive ? 'text-primary' : 'text-gray-500'
-											)}
-										/>
-									</Link>
-								);
-							})}
-
-							<Sheet>
-								<SheetTrigger asChild>
-									<Button variant='ghost' size='icon' className='rounded-full'>
-										<Menu className='h-6 w-6 text-gray-500' />
-									</Button>
-								</SheetTrigger>
-								<SheetContent side='left' className='p-0 w-[280px]'>
-									<div className='h-full'>
-										<NavContent />
-									</div>
-								</SheetContent>
-							</Sheet>
-						</div>
-					</div>
-
-					{/* Main Content */}
-					<div className='flex-1'>{children}</div>
+		<>
+			<div className='flex min-h-screen'>
+				{/* Desktop Sidebar */}
+				<div className='hidden sm:flex sm:flex-col border-r border-gray-200 w-[80px] lg:w-[280px] p-2'>
+					<NavContent />
 				</div>
-			</body>
-		</html>
+
+				{/* Mobile Sidebar */}
+				<div className='sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-2'>
+					<div className='flex justify-around'>
+						{navigation.slice(0, 5).map((item) => {
+							const isActive = pathname === item.href;
+							return (
+								<Link
+									key={item.name}
+									href={item.href}
+									className='flex flex-col items-center px-3 py-2'
+								>
+									<item.icon
+										className={cn(
+											'h-6 w-6',
+											isActive ? 'text-primary' : 'text-gray-500'
+										)}
+									/>
+								</Link>
+							);
+						})}
+
+						<Sheet>
+							<SheetTrigger asChild>
+								<Button variant='ghost' size='icon' className='rounded-full'>
+									<Menu className='h-6 w-6 text-gray-500' />
+								</Button>
+							</SheetTrigger>
+							<SheetContent side='left' className='p-0 w-[280px]'>
+								<div className='h-full'>
+									<NavContent />
+								</div>
+							</SheetContent>
+						</Sheet>
+					</div>
+				</div>
+
+				{/* Main Content */}
+				<div className='flex-1'>{children}</div>
+			</div>
+		</>
 	);
 }
