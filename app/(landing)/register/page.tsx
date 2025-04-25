@@ -50,7 +50,6 @@ const signUpSchema = z.object({
 		.min(8, { message: 'Password must be at least 8 characters' })
 		.max(100, { message: 'Password must be less than 100 characters' }),
 	avatar: z.string().optional().default(''),
-	walletAddress: z.string(),
 });
 
 export default function SignUpPage() {
@@ -60,8 +59,6 @@ export default function SignUpPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [isPhantomConnected, setIsPhantomConnected] = useState(false);
-	const [solanaAddress, setSolanaAddress] = useState('');
 
 	const form = useForm<z.infer<typeof signUpSchema>>({
 		resolver: zodResolver(signUpSchema),
@@ -71,48 +68,8 @@ export default function SignUpPage() {
 			email: '',
 			password: '',
 			avatar: '',
-			walletAddress: '',
 		},
 	});
-
-	// Check if Phantom wallet is installed and accessible
-	useEffect(() => {
-		const checkPhantomWallet = async () => {
-			// @ts-ignore
-			const isPhantomInstalled = window.phantom?.solana?.isPhantom;
-			if (isPhantomInstalled) {
-				try {
-					// @ts-ignore
-					const response = await window.phantom?.solana?.connect({
-						onlyIfTrusted: true,
-					});
-					const address = response.publicKey.toString();
-					setSolanaAddress(address);
-					form.setValue('walletAddress', address);
-					setIsPhantomConnected(true);
-				} catch (error) {
-					console.log(
-						"User hasn't connected to Phantom yet or auto-connect is turned off"
-					);
-				}
-			}
-		};
-
-		checkPhantomWallet();
-	}, [form]);
-
-	const connectPhantomWallet = async () => {
-		try {
-			// @ts-ignore
-			const response = await window.phantom?.solana?.connect();
-			const address = response.publicKey.toString();
-			setSolanaAddress(address);
-			form.setValue('walletAddress', address);
-			setIsPhantomConnected(true);
-		} catch (error) {
-			console.error('Failed to connect to Phantom wallet', error);
-		}
-	};
 
 	// Handle avatar upload
 	const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +101,6 @@ export default function SignUpPage() {
 			username: values.username,
 			email: values.email,
 			password: values.password,
-			walletAddress: values.walletAddress,
 		})
 			.then((res) => {
 				console.log(res.data);
@@ -315,51 +271,6 @@ export default function SignUpPage() {
 										</div>
 										<FormDescription className='text-xs'>
 											Must be at least 8 characters
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							{/* Phantom Wallet Connection */}
-							<FormField
-								control={form.control}
-								name='walletAddress'
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Solana Wallet Address (Optional)</FormLabel>
-										<div className='flex gap-2'>
-											<FormControl>
-												<Input
-													readOnly
-													placeholder='Connect Phantom wallet'
-													{...field}
-													value={
-														solanaAddress
-															? shortenAddress(solanaAddress)
-															: field.value
-													}
-													disabled={isLoading}
-												/>
-											</FormControl>
-											<Button
-												type='button'
-												onClick={connectPhantomWallet}
-												disabled={isLoading || isPhantomConnected}
-												className='whitespace-nowrap'
-											>
-												{isPhantomConnected ? (
-													<>
-														<Check className='h-4 w-4 mr-2' />
-														Connected
-													</>
-												) : (
-													<>Connect Wallet</>
-												)}
-											</Button>
-										</div>
-										<FormDescription className='text-xs'>
-											Connect your Phantom wallet to receive rewards (optional)
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
