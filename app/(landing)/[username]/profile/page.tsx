@@ -51,7 +51,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useParams, useRouter } from 'next/navigation';
 import { getUsername } from '@/lib/getUsername';
-import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { toast } from 'sonner';
 
 // Define the Profile interface
@@ -126,7 +125,6 @@ export default function ProfilePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const router = useRouter();
-	const suiAccount = useCurrentAccount();
 
 	let { username } = useParams();
 	username = getUsername(username);
@@ -192,18 +190,6 @@ export default function ProfilePage() {
 
 	const onSubmit = async (values: z.infer<typeof profileSchema>) => {
 		setIsSaving(true);
-
-		if (suiAccount?.address) {
-			values.wallets.sui = suiAccount.address;
-		} else {
-			values.wallets.sui = '';
-		}
-
-		if (!values.wallets.sui) {
-			toast.error('Please connect your Sui wallet.');
-			setIsSaving(false);
-			return;
-		}
 
 		console.log('Form values:', values);
 		try {
@@ -589,60 +575,6 @@ export default function ProfilePage() {
 																			</div>
 																		</div>
 																	</div>
-
-																	{/* Conditional rendering for wallet status */}
-																	{isEditing ? (
-																		// If editing mode and we have a wallet address from the database
-																		profile?.wallets?.sui ? (
-																			<div className='flex flex-col items-end'>
-																				<div className='flex items-center gap-2'>
-																					<div className='h-2 w-2 rounded-full bg-green-500'></div>
-																					<span className='text-sm text-green-600 font-medium'>
-																						Connected
-																					</span>
-																				</div>
-																				<div className='font-mono text-xs text-gray-500 mt-1'>
-																					{formatWalletAddress(
-																						profile?.wallets?.sui || ''
-																					)}
-																				</div>
-																				{/* Option to change wallet */}
-																				<Button
-																					variant='ghost'
-																					size='sm'
-																					className='text-xs text-blue-500 hover:text-blue-600 mt-1 p-0 h-auto'
-																					onClick={() => {
-																						form.setValue(
-																							'wallets.sui',
-																							suiAccount?.address
-																						); // Clear the wallet value in form
-																					}}
-																				>
-																					Change wallet
-																				</Button>
-																			</div>
-																		) : (
-																			// If editing mode but no wallet connected - show connect button
-																			<ConnectButton
-																				connectText='Connect Sui Wallet'
-																				className='bg-blue-500 hover:bg-blue-600 text-white'
-																			/>
-																		)
-																	) : // View mode - just show the wallet if it exists
-																	profile?.wallets?.sui ? (
-																		<div className='flex items-center gap-2'>
-																			<div className='h-2 w-2 rounded-full bg-green-500'></div>
-																			<span className='font-mono text-sm'>
-																				{formatWalletAddress(
-																					profile.wallets.sui
-																				)}
-																			</span>
-																		</div>
-																	) : (
-																		<span className='text-sm text-gray-400'>
-																			Not connected
-																		</span>
-																	)}
 																</div>
 															</div>
 														</FormItem>

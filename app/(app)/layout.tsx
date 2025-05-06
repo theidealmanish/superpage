@@ -32,9 +32,9 @@ const navigation = [
 	{ name: 'Explore', icon: Search, href: '/explore' },
 	{ name: 'Notifications', icon: Bell, href: '/notifications' },
 	{ name: 'Messages', icon: Mail, href: '/messages' },
+	{ name: 'Engagement', icon: LayoutDashboard, href: '/engagements' },
 	{ name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
 	{ name: 'Profile', icon: User, href: '/profile' },
-	{ name: 'Portfolio', icon: LayoutDashboard, href: '/portfolio' },
 ];
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
