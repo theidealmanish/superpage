@@ -9,8 +9,8 @@ import {
 	Bell,
 	Mail,
 	Bookmark,
-	Search,
-	LayoutDashboard,
+	Compass,
+	Trophy,
 	Settings,
 	LogOut,
 	Globe,
@@ -29,22 +29,21 @@ interface AuthLayoutProps {
 
 const navigation = [
 	{ name: 'Home', icon: Home, href: '/home' },
-	{ name: 'Explore', icon: Search, href: '/explore' },
+	{ name: 'Explore', icon: Compass, href: '/explore' },
 	{ name: 'Notifications', icon: Bell, href: '/notifications' },
-	{ name: 'Messages', icon: Mail, href: '/messages' },
-	{ name: 'Engagement', icon: LayoutDashboard, href: '/engagements' },
-	{ name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
+	{ name: 'Bounties', icon: Globe, href: '/bounties' },
+	{ name: 'Loyalty', icon: Trophy, href: '/loyalty' },
 	{ name: 'Profile', icon: User, href: '/profile' },
 ];
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
 	const pathname = usePathname();
 
-	// Mock user data - replace with your authentication logic
+	// TODO: Replace with actual user data
 	const user = {
 		name: 'Jane Doe',
 		username: 'janedoe',
-		avatarUrl: '', // Leave empty for fallback
+		avatarUrl: '',
 	};
 
 	const NavContent = () => (
