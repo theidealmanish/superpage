@@ -1,7 +1,10 @@
-export default function HomePage() {
+'use client';
+
+import ComingSoon from '@/components/ComingSoon';
+
+export default function ExplorePage() {
 	return (
-		<div>
-			<h1>Home</h1>
-		</div>
+		// With notification button
+		<ComingSoon />
 	);
 }

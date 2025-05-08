@@ -154,7 +154,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 		<>
 			<div className='flex min-h-screen'>
 				{/* Desktop Sidebar */}
-				<div className='hidden sm:flex sm:flex-col border-r border-gray-200 w-[80px] lg:w-[280px] p-2'>
+				<div className='hidden sticky top-0 left-0 h-screen sm:flex sm:flex-col border-r border-gray-200 w-[80px] lg:w-[280px] p-2'>
 					<NavContent />
 				</div>
 
