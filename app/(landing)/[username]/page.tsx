@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getUsername } from '@/lib/getUsername';
 import { getProfileFromUsername } from '@/api/profile';
+import Loading from '@/components/Loading';
 
 // Define the Profile interface
 interface Profile {
@@ -82,14 +83,7 @@ export default function UserProfilePage() {
 
 	// Handle loading state
 	if (isLoading) {
-		return (
-			<div className='min-h-screen flex items-center justify-center'>
-				<div className='flex flex-col items-center gap-4'>
-					<Loader2 className='h-8 w-8 animate-spin text-primary' />
-					<p className='text-lg text-muted-foreground'>Loading profile...</p>
-				</div>
-			</div>
-		);
+		return <Loading />;
 	}
 
 	// Handle error state

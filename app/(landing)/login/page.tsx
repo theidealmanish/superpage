@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 // Form validation schema that accepts either username or email
 const signInSchema = z.object({
@@ -79,6 +80,14 @@ export default function SignInPage() {
 				setIsLoading(false);
 			});
 	}
+
+	// if the user is already logged in, redirect them to their profile page
+	useEffect(() => {
+		const token = localStorage.getItem('token');
+		if (token) {
+			router.push(`/home`);
+		}
+	}, [router]);
 
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
