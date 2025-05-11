@@ -2,7 +2,16 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, User, Bell, Compass, Trophy, Globe, Menu } from 'lucide-react';
+import {
+	Home,
+	User,
+	Bell,
+	Compass,
+	Trophy,
+	Globe,
+	Menu,
+	Coins,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -14,6 +23,7 @@ const navigation = [
 	{ name: 'Explore', icon: Compass, href: '/explore' },
 	{ name: 'Notifications', icon: Bell, href: '/notifications' },
 	{ name: 'Bounties', icon: Globe, href: '/bounties' },
+	{ name: 'Tokens', icon: Coins, href: '/tokens' },
 	{ name: 'Loyalties', icon: Trophy, href: '/loyalties' },
 	{ name: 'Profile', icon: User, href: '/profile' },
 ];
@@ -67,13 +77,6 @@ export const NavContent = () => {
 						);
 					})}
 				</nav>
-
-				<Button
-					className='mt-4 rounded-full hidden lg:flex lg:w-[90%] mx-auto'
-					size='lg'
-				>
-					Post
-				</Button>
 
 				<Button
 					className='mt-4 rounded-full flex lg:hidden justify-center items-center p-3 w-12 h-12 mx-auto'
