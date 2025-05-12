@@ -11,6 +11,8 @@ import {
 	Globe,
 	Menu,
 	Coins,
+	StoreIcon,
+	Store,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -21,6 +23,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 const navigation = [
 	{ name: 'Home', icon: Home, href: '/home' },
 	{ name: 'Explore', icon: Compass, href: '/explore' },
+	{ name: 'Marketplace', icon: Store, href: '/marketplace' },
 	{ name: 'Notifications', icon: Bell, href: '/notifications' },
 	{ name: 'Bounties', icon: Globe, href: '/bounties' },
 	{ name: 'Tokens', icon: Coins, href: '/tokens' },
@@ -30,13 +33,7 @@ const navigation = [
 
 export const NavContent = () => {
 	const pathname = usePathname();
-	const { data: user, isLoading } = useUserProfile();
-
-	const userProfile = user || {
-		name: 'User',
-		username: 'user',
-		avatarUrl: '',
-	};
+	const { data: userProfile, isLoading } = useUserProfile();
 
 	return (
 		<div className='flex h-full flex-col justify-between'>
@@ -119,15 +116,17 @@ export const NavContent = () => {
 				) : (
 					<div className='flex items-center p-3 rounded-full hover:bg-gray-100 transition-colors cursor-pointer'>
 						<Avatar>
-							<AvatarImage src={userProfile.avatarUrl} />
+							<AvatarImage src={userProfile.user.avatarUrl} />
 							<AvatarFallback>
-								{userProfile.name.substring(0, 2)}
+								{userProfile.user.name.substring(0, 2)}
 							</AvatarFallback>
 						</Avatar>
 
 						<div className='ml-3 hidden lg:block'>
-							<p className='font-medium text-sm'>{userProfile.name}</p>
-							<p className='text-gray-500 text-sm'>@{userProfile.username}</p>
+							<p className='font-medium text-sm'>{userProfile.user.name}</p>
+							<p className='text-gray-500 text-sm'>
+								@{userProfile.user.username}
+							</p>
 						</div>
 
 						<div className='ml-auto hidden lg:block'>

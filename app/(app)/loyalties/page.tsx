@@ -19,6 +19,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Progress } from '@/components/ui/progress';
 import {
 	Award,
@@ -51,15 +52,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from '@/components/ui/dialog';
-import {
-	createQR,
-	encodeURL,
-	findReference,
-	validateTransfer,
-	FindReferenceError,
-} from '@solana/pay';
-import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
-import BigNumber from 'bignumber.js';
+import TokenClaimQR from '@/components/TokenClaimQR';
 
 // Types
 interface Creator {
@@ -114,6 +107,11 @@ export default function LoyaltiesPage() {
 	const [isClaiming, setIsClaiming] = useState(false);
 	const [claimTxId, setClaimTxId] = useState<string | null>(null);
 
+	// TODO: use hooks to get user profile and wallet address
+	const { data: userProfile } = useUserProfile();
+	console.log('User Profile:', userProfile);
+
+	// FIXME: This is a temporary fix for mobile devices
 	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 	// Fetch creators on first load
@@ -172,7 +170,6 @@ export default function LoyaltiesPage() {
 				});
 
 				const creators = Array.from(creatorsMap.values());
-				console.log('Processed creators:', creators);
 				setCreators(creators);
 
 				// Select the first creator by default if available
@@ -288,7 +285,6 @@ export default function LoyaltiesPage() {
 	// 	}
 	// }, [qrRef, selectedCreator]);
 
-	
 	// UseEffect to generate QR code when modal is opened
 	// useEffect(() => {
 	// 	if (showClaimModal && qrRef) {
@@ -497,13 +493,23 @@ export default function LoyaltiesPage() {
 									</div>
 								</CardContent>
 								<CardFooter>
-									<Button
-										variant='outline'
-										className='w-full'
-										onClick={() => setShowClaimModal(true)}
-									>
-										Claim {formattedTokenSymbol}
-									</Button>
+									{selectedCreator?.token?._id ? (
+										<TokenClaimQR
+											tokenId={selectedCreator.token._id}
+											tokenName={selectedCreator.token.name || 'Token'}
+											tokenSymbol={formattedTokenSymbol}
+											amount={
+												Math.round(
+													(selectedCreator?.earnedPoints || 0) * 0.01 * 100
+												) / 100
+											}
+											recipientAddress={userProfile.wallets.solana}
+										/>
+									) : (
+										<Button variant='outline' className='w-full' disabled>
+											Token Not Available
+										</Button>
+									)}
 								</CardFooter>
 							</Card>
 

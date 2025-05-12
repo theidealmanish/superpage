@@ -79,6 +79,7 @@ export default function NotificationsPage() {
 	const fetchNotifications = async () => {
 		try {
 			setIsLoading(true);
+			// TODO: Replace with tanstack query
 			const response = await axios.get('/notifications');
 			setNotifications(response.data.data || []);
 			setIsLoading(false);

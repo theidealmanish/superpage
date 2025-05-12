@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import axios from '@/lib/axios';
 
 interface UserProfile {
 	name: string;
@@ -7,26 +8,16 @@ interface UserProfile {
 	// Add other user properties as needed
 }
 
-const fetchUserProfile = async (): Promise<UserProfile> => {
+const fetchUserProfile = async () => {
 	// Replace this with your actual API call
 	const token = localStorage.getItem('token');
 	if (!token) {
 		throw new Error('No authentication token');
 	}
+	const res = await axios.get('/profile/me');
+	console.log('User profile response:', res.data.data);
 
-	// Example API call:
-	// const response = await fetch('/api/user/profile', {
-	//   headers: { Authorization: `Bearer ${token}` }
-	// });
-	// if (!response.ok) throw new Error('Failed to fetch user profile');
-	// return response.json();
-
-	// For now, return dummy data
-	return {
-		name: 'Jane Doe',
-		username: 'janedoe',
-		avatarUrl: '',
-	};
+	return res.data.data;
 };
 
 export function useUserProfile() {
