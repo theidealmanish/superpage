@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import axios from '@/lib/axios';
 import {
 	Card,
 	CardContent,
 	CardDescription,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
@@ -25,8 +27,9 @@ import {
 	Coins,
 	Users,
 	Diamond,
-	Share2,
 	ChevronDown,
+	Loader2,
+	Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,128 +40,331 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import Loading from '@/components/Loading';
+import formatTokenAmount from '@/lib/formatNumberToString';
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+} from '@/components/ui/dialog';
+import {
+	createQR,
+	encodeURL,
+	findReference,
+	validateTransfer,
+	FindReferenceError,
+} from '@solana/pay';
+import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
 
-// Creator data for dropdown
-const creators = [
-	{
-		id: 1,
-		name: 'Jane Cooper',
-		username: 'janecooper',
-		token: '$JANE',
-		avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=JC',
-	},
-	{
-		id: 2,
-		name: 'Alex Rivera',
-		username: 'alexr',
-		token: '$ALEX',
-		avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=AR',
-	},
-	{
-		id: 3,
-		name: 'Devon Lane',
-		username: 'devonlane',
-		token: '$DEVON',
-		avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=DL',
-	},
-	{
-		id: 4,
-		name: 'Leslie Alexander',
-		username: 'leslieaaa',
-		token: '$LESLI',
-		avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=LA',
-	},
-	{
-		id: 5,
-		name: 'Robert Fox',
-		username: 'robfox',
-		token: '$ROB',
-		avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=RF',
-	},
-];
+// Types
+interface Creator {
+	_id: string;
+	name: string;
+	username: string;
+	avatarUrl: string;
+	earnedPoints: number;
+	engagements: number;
+	token?: {
+		_id: string;
+		name: string;
+		symbol: string;
+		imageUrl?: string;
+		totalSupply?: number;
+		circulatingSupply?: number;
+		decimals?: number;
+	};
+}
 
-// Dummy data for the leaderboard
-const leaderboardData = [
-	{
-		rank: 1,
-		username: 'cryptomaster',
-		avatarUrl: '',
-		points: 4850,
-		change: 'up',
-	},
-	{
-		rank: 2,
-		username: 'blockchaindev',
-		avatarUrl: '',
-		points: 4230,
-		change: 'same',
-	},
-	{
-		rank: 3,
-		username: 'tokentrader',
-		avatarUrl: '',
-		points: 4100,
-		change: 'down',
-	},
-	{
-		rank: 4,
-		username: 'web3pioneer',
-		avatarUrl: '',
-		points: 3890,
-		change: 'up',
-	},
-	{ rank: 5, username: 'defiwhale', avatarUrl: '', points: 3740, change: 'up' },
-	{
-		rank: 6,
-		username: 'nftcollector',
-		avatarUrl: '',
-		points: 3520,
-		change: 'down',
-	},
-	{
-		rank: 7,
-		username: 'daohacker',
-		avatarUrl: '',
-		points: 3320,
-		change: 'same',
-	},
-	{
-		rank: 8,
-		username: 'satoshifan',
-		avatarUrl: '',
-		points: 3150,
-		change: 'up',
-	},
-	{
-		rank: 9,
-		username: 'alicecrypto',
-		avatarUrl: '',
-		points: 2980,
-		change: 'down',
-	},
-	{ rank: 10, username: 'bobweb3', avatarUrl: '', points: 2850, change: 'up' },
-];
+interface LeaderboardItem {
+	rank: number;
+	userId: string;
+	username: string;
+	avatarUrl: string;
+	points: number;
+	change: 'up' | 'down' | 'same';
+}
 
-// Dummy data for your tokens
-const userTokenInfo = {
-	tokenName: '$PAGE',
-	tokenBalance: 2485,
-	maxSupply: 10000000,
-	circulatingSupply: 3750000,
-	yourPercentile: 92, // Top 8%
-	rewardsEarned: 125,
-	pendingRewards: 45,
-};
+interface UserTokenInfo {
+	tokenBalance: number;
+	percentile: number;
+	rewardsEarned: number;
+	pendingRewards: number;
+}
 
 export default function LoyaltiesPage() {
+	const router = useRouter();
 	const [timeframe, setTimeframe] = useState('weekly');
-	const [selectedCreator, setSelectedCreator] = useState(creators[0]);
+	const [creators, setCreators] = useState<Creator[]>([]);
+	const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
+	const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
+	const [userTokenInfo, setUserTokenInfo] = useState<UserTokenInfo | null>(
+		null
+	);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isLoadingCreator, setIsLoadingCreator] = useState(false);
+
+	// Add these state variables in your component
+	const [showClaimModal, setShowClaimModal] = useState(false);
+	const [qrRef, setQrRef] = useState<HTMLDivElement | null>(null);
+	const [isClaiming, setIsClaiming] = useState(false);
+	const [claimTxId, setClaimTxId] = useState<string | null>(null);
+
+	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+	// Fetch creators on first load
+	useEffect(() => {
+		fetchEngagement();
+	}, []);
+
+	// Fetch leaderboard when timeframe changes
+	useEffect(() => {
+		if (selectedCreator) {
+			fetchCreatorStats(selectedCreator._id);
+			fetchLeaderboard(selectedCreator._id, timeframe);
+		}
+	}, [selectedCreator, timeframe]);
+
+	// Create a formatted token symbol for display
+	const tokenSymbol = selectedCreator?.token?.symbol || '$TOKEN';
+	const formattedTokenSymbol = tokenSymbol.startsWith('$')
+		? tokenSymbol
+		: `$${tokenSymbol}`;
+
+	// Update the fetchEngagement function to handle the new data structure
+	const fetchEngagement = async () => {
+		try {
+			setIsLoading(true);
+			const response = await axios.get('/engagements/me');
+
+			if (response.data && response.data.data) {
+				// Group engagements by creator and extract unique creators with earned points
+				const creatorsMap = new Map();
+
+				response.data.data.forEach((engagement: any) => {
+					const creatorId = engagement.creator._id;
+					const earnedPoints = engagement.earnedPoints || 0;
+					const token = engagement.token;
+
+					if (!creatorsMap.has(creatorId)) {
+						creatorsMap.set(creatorId, {
+							_id: creatorId,
+							name: engagement.creator.name,
+							username: engagement.creator.username,
+							avatarUrl: '', // Default if not provided in your data
+							token: token,
+							earnedPoints: earnedPoints,
+							engagements: 1,
+						});
+					} else {
+						// Update existing creator with accumulated points and engagement count
+						const existing = creatorsMap.get(creatorId);
+						creatorsMap.set(creatorId, {
+							...existing,
+							earnedPoints: existing.earnedPoints + earnedPoints,
+							engagements: existing.engagements + 1,
+						});
+					}
+				});
+
+				const creators = Array.from(creatorsMap.values());
+				console.log('Processed creators:', creators);
+				setCreators(creators);
+
+				// Select the first creator by default if available
+				if (creators.length > 0) {
+					setSelectedCreator(creators[0]);
+				}
+			}
+		} catch (error) {
+			console.error('Error fetching creators:', error);
+			toast.error('Failed to load creators');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	// Add a new function to fetch specific creator stats
+	const fetchCreatorStats = async (creatorId: string) => {
+		try {
+			setIsLoadingCreator(true);
+
+			// Create placeholder data (in a real app, this would be an API call)
+			// You can replace this with actual API calls when available
+			const userToken = {
+				tokenBalance: selectedCreator?.earnedPoints || 0,
+				percentile: 90, // Placeholder percentile ranking
+				rewardsEarned: selectedCreator?.earnedPoints || 0,
+				pendingRewards: 0, // Placeholder for pending rewards
+			};
+
+			setUserTokenInfo(userToken);
+		} catch (error) {
+			console.error('Error fetching creator stats:', error);
+			toast.error('Failed to load creator statistics');
+		} finally {
+			setIsLoadingCreator(false);
+		}
+	};
+
+	// Enhanced fetchLeaderboard function
+	const fetchLeaderboard = async (creatorId: string, period: string) => {
+		try {
+			// You may need to modify this endpoint based on your API
+			const response = await axios.get(
+				`/creator/${creatorId}/leaderboard?period=${period}`
+			);
+
+			if (response.data && response.data.data) {
+				// Process the data to match LeaderboardItem interface
+				const leaderboardData = response.data.data.map(
+					(item: any, index: number) => ({
+						rank: index + 1,
+						userId: item.user || item.userId,
+						username: item.username || `user_${index + 1}`,
+						avatarUrl: item.avatarUrl || '',
+						points: item.earnedPoints || item.points || 0,
+						change: item.change || 'same',
+					})
+				);
+
+				setLeaderboard(leaderboardData);
+			} else {
+				setLeaderboard([]);
+			}
+		} catch (error) {
+			console.error('Error fetching leaderboard:', error);
+			toast.error('Failed to load leaderboard');
+			setLeaderboard([]);
+		}
+	};
+
+	// Update the generateSolanaPayQR function to handle SOL claims
+	// const generateSolanaPayQR = useCallback(() => {
+	// 	if (!qrRef) return;
+
+	// 	// Clear any existing content
+	// 	while (qrRef.firstChild) {
+	// 		qrRef.removeChild(qrRef.firstChild);
+	// 	}
+
+	// 	try {
+	// 		// Create a unique reference for this transaction
+	// 		const referenceUint8Array = new Uint8Array(16);
+	// 		window.crypto.getRandomValues(referenceUint8Array);
+	// 		// Convert to a PublicKey for the reference
+	// 		const reference = [new PublicKey(referenceUint8Array)];
+
+	// 		// Hardcoded recipient address (user's wallet)
+	// 		// In a real implementation, this would be the user's wallet address
+	// 		const userWalletAddress = 'CmtShTafYxCfpAehyvNacWXwGeG2RL9Nvp7T5Q2DheGj';
+
+	// 		// Calculate SOL amount based on points earned (1 point = 0.0001 SOL)
+	// 		const solAmount = new BigNumber(
+	// 			(selectedCreator?.earnedPoints || 0) * 0.0001
+	// 		);
+
+	// 		// Create the Solana Pay URL with parameters for SOL transfer TO the user
+	// 		const url = encodeURL({
+	// 			recipient: new PublicKey(userWalletAddress),
+	// 			splToken: new PublicKey('14Kmab4t7sjeKBQKCec3NK4JbyWZshkDRX65UCHaW2RT'),
+	// 			reference,
+	// 			label: `${selectedCreator.name} Reward`,
+	// 			message: `Claim ${solAmount} SOL from ${selectedCreator.name}`,
+	// 		});
+
+	// 		// Create and append the QR code to the container
+	// 		const qr = createQR(url, 300, 'transparent');
+	// 		if (qrRef) {
+	// 			qr.append(qrRef);
+	// 		}
+	// 	} catch (error) {
+	// 		console.error('Error generating QR code:', error);
+	// 		toast.error('Failed to generate payment QR code');
+	// 	}
+	// }, [qrRef, selectedCreator]);
+
+	
+	// UseEffect to generate QR code when modal is opened
+	// useEffect(() => {
+	// 	if (showClaimModal && qrRef) {
+	// 		generateSolanaPayQR();
+	// 	}
+	// }, [showClaimModal, qrRef, generateSolanaPayQR]);
+
+	// Add this function to monitor the transaction status
+	// const monitorTransaction = async (reference: Uint8Array) => {
+	// 	setIsClaiming(true);
+
+	// 	try {
+	// 		// Connect to Solana cluster
+	// 		const connection = new Connection(clusterApiUrl('mainnet-beta'));
+
+	// 		// Wait for the transaction to be found
+	// 		const signatureInfo = await findReference(connection, reference[0]);
+
+	// 		// Validate the transaction
+	// 		await validateTransfer(connection, signatureInfo.signature, {
+	// 			recipient: new PublicKey('YOUR_TREASURY_WALLET_ADDRESS'),
+	// 			amount: (selectedCreator?.earnedPoints || 0) * 0.01,
+	// 			splToken: new PublicKey(selectedCreator?.token?._id || ''),
+	// 		});
+
+	// 		// Transaction successful
+	// 		setClaimTxId(signatureInfo.signature);
+
+	// 		// Update the user's token balance on your backend
+	// 		await axios.post(`/token/claim/${selectedCreator._id}`);
+
+	// 		toast.success('Tokens claimed successfully!');
+	// 	} catch (error) {
+	// 		if (error instanceof FindReferenceError) {
+	// 			// Transaction still not found, timeout
+	// 			toast.error('Transaction timeout. Please try again.');
+	// 		} else {
+	// 			console.error('Error claiming tokens:', error);
+	// 			toast.error('Failed to claim tokens');
+	// 		}
+	// 	} finally {
+	// 		setIsClaiming(false);
+	// 	}
+	// };
+
+	// Fallback for empty state or loading
+	if (isLoading) {
+		return <Loading />;
+	}
+
+	if (creators.length === 0) {
+		return (
+			<div className='p-6 flex flex-col items-center justify-center h-[70vh]'>
+				<Coins className='h-16 w-16 text-gray-300 mb-4' />
+				<h1 className='text-2xl font-bold mb-2'>No Creators Found</h1>
+				<p className='text-gray-500 mb-6 text-center max-w-md'>
+					There are no creators with loyalty tokens available yet. Check back
+					later for updates.
+				</p>
+				<Button onClick={() => router.push('/explore')}>
+					Explore Creators
+				</Button>
+			</div>
+		);
+	}
+
+	if (!selectedCreator) {
+		return <Loading />;
+	}
 
 	return (
 		<div className='p-6 flex flex-col h-full'>
 			<div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-4'>
 				<h1 className='text-3xl font-bold'>Loyalties</h1>
 			</div>
+
 			{/* Creator Selection Dropdown */}
 			<div className='my-4 md:mt-0'>
 				<h3 className='font-semibold mb-2'>Select creator</h3>
@@ -168,7 +374,7 @@ export default function LoyaltiesPage() {
 							<div className='flex items-center gap-2 truncate'>
 								<Avatar className='h-8 w-8'>
 									<AvatarImage
-										src={selectedCreator.avatarUrl}
+										src={selectedCreator.avatarUrl || ''}
 										alt={selectedCreator.name}
 									/>
 									<AvatarFallback>
@@ -192,13 +398,16 @@ export default function LoyaltiesPage() {
 						<DropdownMenuSeparator />
 						{creators.map((creator) => (
 							<DropdownMenuItem
-								key={creator.id}
+								key={creator._id}
 								className='cursor-pointer'
 								onClick={() => setSelectedCreator(creator)}
 							>
 								<div className='flex items-center gap-2 w-full'>
 									<Avatar className='h-8 w-8'>
-										<AvatarImage src={creator.avatarUrl} alt={creator.name} />
+										<AvatarImage
+											src={creator.avatarUrl || ''}
+											alt={creator.name}
+										/>
 										<AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
 									</Avatar>
 									<div>
@@ -214,240 +423,396 @@ export default function LoyaltiesPage() {
 				</DropdownMenu>
 			</div>
 
-			<Tabs defaultValue='dashboard' className='w-full'>
-				<TabsList className='mb-6'>
-					<TabsTrigger value='dashboard'>Dashboard</TabsTrigger>
-					<TabsTrigger value='leaderboard'>Leaderboard</TabsTrigger>
-					<TabsTrigger value='rewards'>Rewards</TabsTrigger>
-				</TabsList>
+			{isLoadingCreator ? (
+				<div className='flex items-center justify-center py-12'>
+					<Loader2 className='h-8 w-8 animate-spin text-primary' />
+				</div>
+			) : (
+				<Tabs defaultValue='dashboard' className='w-full'>
+					<TabsList className='mb-6'>
+						<TabsTrigger value='dashboard'>Dashboard</TabsTrigger>
+						<TabsTrigger value='leaderboard'>Leaderboard</TabsTrigger>
+						<TabsTrigger value='rewards'>Rewards</TabsTrigger>
+					</TabsList>
 
-				{/* Dashboard Tab */}
-				<TabsContent value='dashboard'>
-					<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-						{/* Your Token Card */}
+					{/* Dashboard Tab */}
+					<TabsContent value='dashboard'>
+						<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+							{/* Your Token Card */}
+							<Card>
+								<CardHeader className='pb-3'>
+									<CardTitle className='flex items-center gap-2 text-xl'>
+										<Coins className='h-5 w-5 text-amber-500' />
+										{formattedTokenSymbol} Holding
+									</CardTitle>
+									<CardDescription>
+										Summary of your token holdings from @
+										{selectedCreator.username}
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<div className='flex justify-between items-baseline mb-6'>
+										<div className='text-4xl font-bold'>
+											{formatTokenAmount(selectedCreator.earnedPoints || 0)}
+										</div>
+										<div className='text-sm text-gray-500'>
+											From {selectedCreator.engagements || 0} engagements
+										</div>
+									</div>
+
+									<div className='space-y-6'>
+										<div>
+											<div className='flex justify-between text-sm mb-1'>
+												<span className='text-gray-500'>Points Earned</span>
+												<span className='font-medium'>
+													{selectedCreator.earnedPoints || 0} points
+												</span>
+											</div>
+											<div className='flex justify-between text-sm'>
+												<span className='text-gray-500'>Token Value</span>
+												<span className='font-medium text-amber-600'>
+													≈{' '}
+													{Math.round(
+														(selectedCreator.earnedPoints || 0) * 0.01 * 100
+													) / 100}{' '}
+													{formattedTokenSymbol}
+												</span>
+											</div>
+										</div>
+
+										<div>
+											<div className='flex justify-between mb-1'>
+												<span className='text-sm text-gray-500'>
+													Your Position
+												</span>
+												<span className='text-sm font-medium'>
+													Top {100 - (userTokenInfo?.percentile || 0)}%
+												</span>
+											</div>
+											<Progress
+												value={userTokenInfo?.percentile || 0}
+												className='h-2'
+											/>
+										</div>
+									</div>
+								</CardContent>
+								<CardFooter>
+									<Button
+										variant='outline'
+										className='w-full'
+										onClick={() => setShowClaimModal(true)}
+									>
+										Claim {formattedTokenSymbol}
+									</Button>
+								</CardFooter>
+							</Card>
+
+							{/* Token Stats Card */}
+							<Card>
+								<CardHeader className='pb-3'>
+									<CardTitle className='flex items-center gap-2 text-xl'>
+										<Diamond className='h-5 w-5 text-indigo-500' />
+										{selectedCreator.token?.name || 'Token'} Information
+									</CardTitle>
+									<CardDescription>
+										Statistics about {selectedCreator.name}'s{' '}
+										{formattedTokenSymbol} token
+									</CardDescription>
+								</CardHeader>
+								<CardContent className='space-y-4'>
+									<div className='grid grid-cols-1 gap-4 mb-4'>
+										<div className='bg-gray-50 p-4 rounded-lg flex items-center space-x-4'>
+											{selectedCreator.token?.imageUrl ? (
+												<img
+													src={selectedCreator.token.imageUrl}
+													alt={selectedCreator.token.name}
+													className='h-12 w-12 rounded-full'
+												/>
+											) : (
+												<div className='h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center'>
+													<span className='text-primary font-bold'>
+														{selectedCreator.token?.symbol?.substring(0, 2) ||
+															''}
+													</span>
+												</div>
+											)}
+											<div>
+												<div className='text-sm text-gray-500 mb-1'>Token</div>
+												<div className='font-bold flex items-center'>
+													{selectedCreator.token?.name}
+													<span className='ml-2 text-sm bg-gray-200 px-2 py-0.5 rounded-full'>
+														{formattedTokenSymbol}
+													</span>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<div className='grid grid-cols-2 gap-4'>
+										<div className='bg-gray-50 p-4 rounded-lg'>
+											<div className='text-sm text-gray-500 mb-1'>
+												Points Earned
+											</div>
+											<div className='text-xl font-bold'>
+												{formatTokenAmount(selectedCreator.earnedPoints)}
+											</div>
+										</div>
+
+										<div className='bg-gray-50 p-4 rounded-lg'>
+											<div className='text-sm text-gray-500 mb-1'>
+												Total Supply
+											</div>
+											<div className='text-xl font-bold'>
+												{formatTokenAmount(selectedCreator.token?.totalSupply)}{' '}
+												{formattedTokenSymbol}
+											</div>
+										</div>
+									</div>
+
+									<div className='pt-2'>
+										<Button
+											variant='outline'
+											className='w-full'
+											onClick={() =>
+												router.push(`/tokens/${selectedCreator.token?._id}`)
+											}
+											disabled={!selectedCreator.token?._id}
+										>
+											View Token Details
+										</Button>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+					</TabsContent>
+
+					{/* Leaderboard Tab */}
+					<TabsContent value='leaderboard'>
 						<Card>
-							<CardHeader className='pb-3'>
-								<CardTitle className='flex items-center gap-2 text-xl'>
-									<Coins className='h-5 w-5 text-amber-500' />
-									{selectedCreator.token} Holding
-								</CardTitle>
+							<CardHeader>
+								<div className='flex justify-between items-center'>
+									<CardTitle className='flex items-center gap-2'>
+										<Award className='h-5 w-5 text-amber-500' />
+										{formattedTokenSymbol}'s Leaderboard
+									</CardTitle>
+									<Select value={timeframe} onValueChange={setTimeframe}>
+										<SelectTrigger className='w-36'>
+											<SelectValue placeholder='Select timeframe' />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='daily'>Daily</SelectItem>
+											<SelectItem value='weekly'>Weekly</SelectItem>
+											<SelectItem value='monthly'>Monthly</SelectItem>
+											<SelectItem value='alltime'>All Time</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
 								<CardDescription>
-									Summary of your token holdings from @
-									{selectedCreator.username}
+									Top supporters in the {timeframe} leaderboard
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<div className='flex justify-between items-baseline mb-6'>
-									<div className='text-4xl font-bold'>
-										{userTokenInfo.tokenBalance.toLocaleString()}
+								{leaderboard.length === 0 ? (
+									<div className='text-center py-12'>
+										<Award className='h-12 w-12 text-gray-300 mx-auto mb-4' />
+										<p className='text-lg font-medium text-gray-700'>
+											No leaderboard data yet
+										</p>
+										<p className='text-gray-500'>
+											Be the first to earn points!
+										</p>
 									</div>
-								</div>
+								) : (
+									<div className='rounded-md border'>
+										<div className='grid grid-cols-12 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-500'>
+											<div className='col-span-1'>#</div>
+											<div className='col-span-7'>User</div>
+											<div className='col-span-3 text-right'>Points</div>
+											<div className='col-span-1'></div>
+										</div>
 
-								<div className='space-y-6'>
-									<div>
-										<div className='flex justify-between text-sm mb-1'>
-											<span className='text-gray-500'>Rewards Earned</span>
-											<span className='font-medium'>
-												{userTokenInfo.rewardsEarned} tokens
-											</span>
-										</div>
-										<div className='flex justify-between text-sm'>
-											<span className='text-gray-500'>Pending Rewards</span>
-											<span className='font-medium text-amber-600'>
-												+{userTokenInfo.pendingRewards} tokens
-											</span>
-										</div>
+										{leaderboard.map((user) => (
+											<div
+												key={user.rank}
+												className='grid grid-cols-12 py-3 px-4 border-t items-center'
+											>
+												<div className='col-span-1 font-medium'>
+													{user.rank}
+												</div>
+												<div className='col-span-7 flex items-center gap-3'>
+													<Avatar className='h-8 w-8'>
+														<AvatarImage
+															src={
+																user.avatarUrl ||
+																`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`
+															}
+														/>
+														<AvatarFallback>
+															{user.username.charAt(0).toUpperCase()}
+														</AvatarFallback>
+													</Avatar>
+													<div className='font-medium'>@{user.username}</div>
+												</div>
+												<div className='col-span-3 text-right font-bold'>
+													{user.points.toLocaleString()}
+												</div>
+												<div className='col-span-1 flex justify-end'>
+													{user.change === 'up' && (
+														<ArrowUp className='h-4 w-4 text-green-500' />
+													)}
+													{user.change === 'down' && (
+														<ArrowDown className='h-4 w-4 text-red-500' />
+													)}
+												</div>
+											</div>
+										))}
 									</div>
+								)}
 
-									<div>
-										<div className='flex justify-between mb-1'>
-											<span className='text-sm text-gray-500'>
-												Your Position
-											</span>
-											<span className='text-sm font-medium'>
-												Top {100 - userTokenInfo.yourPercentile}%
-											</span>
-										</div>
-										<Progress
-											value={userTokenInfo.yourPercentile}
-											className='h-2'
-										/>
+								{leaderboard.length > 0 && (
+									<div className='mt-4 flex justify-center'>
+										<Button
+											variant='outline'
+											className='gap-2'
+											onClick={() =>
+												router.push(
+													`/creators/${selectedCreator._id}/leaderboard`
+												)
+											}
+										>
+											<Users className='h-4 w-4' />
+											View Full Leaderboard
+										</Button>
 									</div>
-								</div>
+								)}
 							</CardContent>
 						</Card>
+					</TabsContent>
 
-						{/* Token Stats Card */}
+					{/* Rewards Tab */}
+					<TabsContent value='rewards'>
 						<Card>
-							<CardHeader className='pb-3'>
-								<CardTitle className='flex items-center gap-2 text-xl'>
-									<Diamond className='h-5 w-5 text-indigo-500' />
-									Token Information
-								</CardTitle>
+							<CardHeader>
+								<CardTitle>Loyalty Rewards</CardTitle>
 								<CardDescription>
-									Statistics about {selectedCreator.name}'s{' '}
-									{userTokenInfo.tokenName} token
+									Ways to earn more {formattedTokenSymbol} tokens from{' '}
+									{selectedCreator.name}
 								</CardDescription>
 							</CardHeader>
-							<CardContent className='space-y-4'>
-								<div className='grid grid-cols-2 gap-4'>
-									<div className='bg-gray-50 p-4 rounded-lg'>
-										<div className='text-sm text-gray-500 mb-1'>Max Supply</div>
-										<div className='text-xl font-bold'>
-											{userTokenInfo.maxSupply.toLocaleString()}
-										</div>
-									</div>
-
-									<div className='bg-gray-50 p-4 rounded-lg'>
-										<div className='text-sm text-gray-500 mb-1'>
-											Circulating Supply
-										</div>
-										<div className='text-xl font-bold'>
-											{userTokenInfo.circulatingSupply.toLocaleString()}
-										</div>
+							<CardContent className='text-center py-12'>
+								<div className='mb-6'>
+									<div className='bg-gray-100 p-8 inline-block rounded-full'>
+										<Coins className='h-12 w-12 text-gray-400' />
 									</div>
 								</div>
-
-								<div>
-									<div className='flex justify-between mb-1'>
-										<span className='text-sm text-gray-500'>
-											Distribution Progress
-										</span>
-										<span className='text-sm font-medium'>
-											{Math.round(
-												(userTokenInfo.circulatingSupply /
-													userTokenInfo.maxSupply) *
-													100
-											)}
-											%
-										</span>
-									</div>
-									<Progress
-										value={
-											(userTokenInfo.circulatingSupply /
-												userTokenInfo.maxSupply) *
-											100
-										}
-										className='h-2'
-									/>
-								</div>
-
-								<div className='pt-2'>
-									<Button variant='outline' className='w-full'>
-										View Token Details
-									</Button>
-								</div>
+								<h3 className='text-2xl font-semibold mb-2'>
+									Rewards Coming Soon
+								</h3>
+								<p className='text-gray-500 max-w-md mx-auto'>
+									We're working on exciting new ways for you to earn rewards
+									from {selectedCreator.name}. Check back soon for updates!
+								</p>
 							</CardContent>
 						</Card>
-					</div>
-				</TabsContent>
+					</TabsContent>
+				</Tabs>
+			)}
 
-				{/* Leaderboard Tab */}
-				<TabsContent value='leaderboard'>
-					<Card>
-						<CardHeader>
-							<div className='flex justify-between items-center'>
-								<CardTitle className='flex items-center gap-2'>
-									<Award className='h-5 w-5 text-amber-500' />
-									{selectedCreator.token}'s Leaderboard
-								</CardTitle>
-								<Select value={timeframe} onValueChange={setTimeframe}>
-									<SelectTrigger className='w-36'>
-										<SelectValue placeholder='Select timeframe' />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value='daily'>Daily</SelectItem>
-										<SelectItem value='weekly'>Weekly</SelectItem>
-										<SelectItem value='monthly'>Monthly</SelectItem>
-										<SelectItem value='alltime'>All Time</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-							<CardDescription>
-								Top supporters in the {timeframe} leaderboard
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className='rounded-md border'>
-								<div className='grid grid-cols-12 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-500'>
-									<div className='col-span-1'>#</div>
-									<div className='col-span-7'>User</div>
-									<div className='col-span-3 text-right'>Points</div>
-									<div className='col-span-1'></div>
+			{/* Add this after your main component JSX but before the final closing tag */}
+			<Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
+				<DialogContent className='sm:max-w-[425px]'>
+					<DialogHeader>
+						<DialogTitle>Claim {formattedTokenSymbol} Tokens</DialogTitle>
+						<DialogDescription>
+							Scan this QR code with your Phantom wallet to claim your tokens
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className='flex flex-col items-center justify-center py-4'>
+						{claimTxId ? (
+							<div className='text-center space-y-4'>
+								<div className='bg-green-100 rounded-full p-3 inline-flex'>
+									<Check className='h-6 w-6 text-green-600' />
 								</div>
-
-								{leaderboardData.map((user) => (
-									<div
-										key={user.rank}
-										className='grid grid-cols-12 py-3 px-4 border-t items-center'
-									>
-										<div className='col-span-1 font-medium'>{user.rank}</div>
-										<div className='col-span-7 flex items-center gap-3'>
-											<Avatar className='h-8 w-8'>
-												<AvatarImage
-													src={
-														user.avatarUrl ||
-														`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`
-													}
-												/>
-												<AvatarFallback>
-													{user.username.charAt(0).toUpperCase()}
-												</AvatarFallback>
-											</Avatar>
-											<div className='font-medium'>@{user.username}</div>
-										</div>
-										<div className='col-span-3 text-right font-bold'>
-											{user.points.toLocaleString()}
-										</div>
-										<div className='col-span-1 flex justify-end'>
-											{user.change === 'up' && (
-												<ArrowUp className='h-4 w-4 text-green-500' />
-											)}
-											{user.change === 'down' && (
-												<ArrowDown className='h-4 w-4 text-red-500' />
-											)}
-										</div>
-									</div>
-								))}
-							</div>
-
-							<div className='mt-4 flex justify-center'>
-								<Button variant='outline' className='gap-2'>
-									<Users className='h-4 w-4' />
-									View Full Leaderboard
+								<p className='font-medium'>Tokens claimed successfully!</p>
+								<p className='text-sm text-gray-500'>
+									Your tokens have been transferred to your wallet.
+								</p>
+								<Button
+									className='w-full'
+									onClick={() => {
+										setClaimTxId(null);
+										setShowClaimModal(false);
+									}}
+								>
+									Close
 								</Button>
 							</div>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				{/* Rewards Tab */}
-				<TabsContent value='rewards'>
-					<Card>
-						<CardHeader>
-							<CardTitle>Loyalty Rewards</CardTitle>
-							<CardDescription>
-								Ways to earn more {userTokenInfo.tokenName} tokens from{' '}
-								{selectedCreator.name}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className='text-center py-12'>
-							<div className='mb-6'>
-								<div className='bg-gray-100 p-8 inline-block rounded-full'>
-									<Coins className='h-12 w-12 text-gray-400' />
+						) : (
+							<>
+								<div
+									ref={setQrRef}
+									className='qr-container bg-white p-4 rounded-lg mb-4'
+								>
+									{/* QR code will be rendered here */}
+									{isClaiming && (
+										<div className='absolute inset-0 flex items-center justify-center bg-white/80'>
+											<Loader2 className='h-8 w-8 animate-spin text-primary' />
+										</div>
+									)}
 								</div>
-							</div>
-							<h3 className='text-2xl font-semibold mb-2'>
-								Rewards Coming Soon
-							</h3>
-							<p className='text-gray-500 max-w-md mx-auto'>
-								We're working on exciting new ways for you to earn rewards from{' '}
-								{selectedCreator.name}. Check back soon for updates!
-							</p>
-						</CardContent>
-					</Card>
-				</TabsContent>
-			</Tabs>
+
+								<div className='text-sm text-gray-500 text-center mb-4'>
+									<p>Scan with your Phantom wallet to claim</p>
+									<p className='mt-1 font-medium'>
+										{Math.round(
+											(selectedCreator?.earnedPoints || 0) * 0.01 * 100
+										) / 100}{' '}
+										{formattedTokenSymbol}
+									</p>
+								</div>
+
+								<Button
+									variant='outline'
+									className='w-full'
+									onClick={() => setShowClaimModal(false)}
+								>
+									Cancel
+								</Button>
+
+								{/* Check if on mobile and provide a direct link for Phantom mobile app */}
+								{/* {isMobile && (
+									<Button
+										className='mt-4 w-full'
+										onClick={() => {
+											// Get the same URL used for the QR code
+											const url = encodeURL({
+												recipient: new PublicKey(
+													'YOUR_TREASURY_WALLET_ADDRESS'
+												), // Replace with your recipient address
+												splToken: new PublicKey(selectedCreator.token._id), // Use token ID or mint address
+												amount: (selectedCreator?.earnedPoints || 0) * 0.01,
+												reference: new Uint8Array(16),
+												label: `${selectedCreator.name} Token Claim`,
+												message: `Claim ${
+													Math.round(
+														(selectedCreator?.earnedPoints || 0) * 0.01 * 100
+													) / 100
+												} ${formattedTokenSymbol} tokens from ${
+													selectedCreator.name
+												}`,
+											});
+											window.location.href = url.toString();
+										}}
+									>
+										Open in Phantom App
+									</Button>
+								)} */}
+							</>
+						)}
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

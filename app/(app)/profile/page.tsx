@@ -16,6 +16,7 @@ import {
 	Linkedin,
 	Github,
 	Loader2,
+	Copy,
 } from 'lucide-react';
 
 import {
@@ -53,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useParams, useRouter } from 'next/navigation';
 import { getUsername } from '@/lib/getUsername';
 import { toast } from 'sonner';
+import PhantomWalletButton from '@/components/wallet/PhantomWalletButton';
 
 // Define the Profile interface
 interface Profile {
@@ -84,7 +86,9 @@ const profileSchema = z.object({
 		github: z.string().optional(),
 	}),
 	wallets: z.object({
+		solana: z.string().optional(),
 		sui: z.string().optional(),
+		ethereum: z.string().optional(),
 	}),
 });
 
@@ -142,7 +146,9 @@ export default function ProfilePage() {
 				github: '',
 			},
 			wallets: {
+				solana: '',
 				sui: '',
+				ethereum: '',
 			},
 		},
 	});
@@ -159,7 +165,7 @@ export default function ProfilePage() {
 				console.log(userResponse.data.data);
 
 				// Then get profile
-				const profileResponse = await axios.get(`/profile/${username}`);
+				const profileResponse = await axios.get(`/profile/me`);
 				setProfile(profileResponse.data.data);
 				console.log(profileResponse.data.data);
 
@@ -168,13 +174,15 @@ export default function ProfilePage() {
 					bio: profileResponse.data.data.bio,
 					country: profileResponse.data.data.country,
 					socials: {
-						x: profileResponse.data.data.socials.x || '',
-						youtube: profileResponse.data.data.socials.youtube || '',
-						linkedin: profileResponse.data.data.socials.linkedin || '',
-						github: profileResponse.data.data.socials.github || '',
+						x: profileResponse.data.data.socials?.x || '',
+						youtube: profileResponse.data.data.socials?.youtube || '',
+						linkedin: profileResponse.data.data.socials?.linkedin || '',
+						github: profileResponse.data.data.socials?.github || '',
 					},
 					wallets: {
+						solana: profileResponse.data.data.wallets?.solana || '',
 						sui: profileResponse.data.data?.wallets?.sui || '',
+						ethereum: profileResponse.data.data.wallets?.ethereum || '',
 					},
 				});
 				setError(null);
@@ -196,7 +204,6 @@ export default function ProfilePage() {
 		try {
 			const response = await axios.post('/profile', values);
 			console.log('Profile updated:', response.data);
-			router.push(`/${user.username}`);
 			setProfile(response.data);
 			setError(null);
 			setIsEditing(false);
@@ -508,9 +515,191 @@ export default function ProfilePage() {
 										<div>
 											<h3 className='text-lg font-medium mb-3'>Wallets</h3>
 											<div className='space-y-4'>
-												{/* phantom wallet connection */}
+												{isEditing && (
+													<div className='mb-4'>
+														<PhantomWalletButton
+															onAddressSelect={(addresses) => {
+																if (addresses.solana) {
+																	form.setValue(
+																		'wallets.solana',
+																		addresses.solana
+																	);
+																}
+																if (addresses.sui) {
+																	form.setValue('wallets.sui', addresses.sui);
+																}
+																if (addresses.ethereum) {
+																	form.setValue(
+																		'wallets.ethereum',
+																		addresses.ethereum
+																	);
+																}
+															}}
+														/>
+														<p className='text-sm text-gray-500 mt-2'>
+															Connect your Phantom wallet to automatically fill
+															in addresses from multiple networks
+														</p>
+													</div>
+												)}
 
-												{/* You can add more wallet types here with similar logic */}
+												{/* Phantom Solana Wallet */}
+												<FormField
+													control={form.control}
+													name='wallets.solana'
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel className='flex items-center gap-2'>
+																<div className='w-4 h-4 rounded-full bg-purple-500'></div>
+																Solana
+															</FormLabel>
+															{isEditing ? (
+																<>
+																	<div className='flex space-x-2'>
+																		<FormControl>
+																			<Input
+																				placeholder='Solana address'
+																				{...field}
+																				className='flex-grow'
+																			/>
+																		</FormControl>
+																	</div>
+																	<FormMessage />
+																</>
+															) : profile?.wallets?.solana ? (
+																<div className='flex items-center gap-2'>
+																	<code className='px-2 py-1 bg-gray-100 rounded text-sm font-mono'>
+																		{formatWalletAddress(
+																			profile.wallets.solana
+																		)}
+																	</code>
+																	<Button
+																		variant='ghost'
+																		size='sm'
+																		type='button'
+																		onClick={() => {
+																			navigator.clipboard.writeText(
+																				profile.wallets.solana
+																			);
+																			toast.success(
+																				'Address copied to clipboard'
+																			);
+																		}}
+																	>
+																		<Copy className='h-4 w-4' />
+																	</Button>
+																</div>
+															) : (
+																<span className='text-gray-400'>
+																	No wallet connected
+																</span>
+															)}
+														</FormItem>
+													)}
+												/>
+
+												{/* Phantom Sui Wallet */}
+												<FormField
+													control={form.control}
+													name='wallets.sui'
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel className='flex items-center gap-2'>
+																<div className='w-4 h-4 rounded-full bg-blue-500'></div>
+																Sui
+															</FormLabel>
+															{isEditing ? (
+																<>
+																	<FormControl>
+																		<Input
+																			placeholder='Sui address'
+																			{...field}
+																		/>
+																	</FormControl>
+																	<FormMessage />
+																</>
+															) : profile?.wallets?.sui ? (
+																<div className='flex items-center gap-2'>
+																	<code className='px-2 py-1 bg-gray-100 rounded text-sm font-mono'>
+																		{formatWalletAddress(profile.wallets.sui)}
+																	</code>
+																	<Button
+																		variant='ghost'
+																		size='sm'
+																		type='button'
+																		onClick={() => {
+																			navigator.clipboard.writeText(
+																				profile.wallets.sui
+																			);
+																			console.log('Sui address copied');
+																			toast.success(
+																				'Address copied to clipboard'
+																			);
+																		}}
+																	>
+																		<Copy className='h-4 w-4' />
+																	</Button>
+																</div>
+															) : (
+																<span className='text-gray-400'>
+																	No wallet connected
+																</span>
+															)}
+														</FormItem>
+													)}
+												/>
+
+												{/* Ethereum Wallet */}
+												<FormField
+													control={form.control}
+													name='wallets.ethereum'
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel className='flex items-center gap-2'>
+																<div className='w-4 h-4 rounded-full bg-blue-400'></div>
+																Ethereum
+															</FormLabel>
+															{isEditing ? (
+																<>
+																	<FormControl>
+																		<Input
+																			placeholder='Ethereum address'
+																			{...field}
+																		/>
+																	</FormControl>
+																	<FormMessage />
+																</>
+															) : profile?.wallets?.ethereum ? (
+																<div className='flex items-center gap-2'>
+																	<code className='px-2 py-1 bg-gray-100 rounded text-sm font-mono'>
+																		{formatWalletAddress(
+																			profile.wallets.ethereum
+																		)}
+																	</code>
+																	<Button
+																		variant='ghost'
+																		size='sm'
+																		type='button'
+																		onClick={() => {
+																			navigator.clipboard.writeText(
+																				profile.wallets.ethereum
+																			);
+																			toast.success(
+																				'Address copied to clipboard'
+																			);
+																		}}
+																	>
+																		<Copy className='h-4 w-4' />
+																	</Button>
+																</div>
+															) : (
+																<span className='text-gray-400'>
+																	No wallet connected
+																</span>
+															)}
+														</FormItem>
+													)}
+												/>
 											</div>
 										</div>
 									</CardContent>
