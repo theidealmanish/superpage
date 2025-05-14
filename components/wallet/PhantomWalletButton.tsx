@@ -93,22 +93,14 @@ export default function PhantomWalletButton({
 			// Check if Sui is available
 			if (window.phantom?.sui) {
 				try {
-					const suiAccounts = await window.phantom.sui.connect();
+					console.log(await window.phantom.sui.requestAccount());
+					const suiAccounts = await window.phantom.sui.requestAccount(
+						'standard:connect'
+					);
+					console.log(suiAccounts);
 					addresses.sui = suiAccounts.publicKey;
 				} catch (error) {
 					console.error('Error connecting to Sui:', error);
-				}
-			}
-
-			// Check if Polygon is available
-			if (window.phantom?.polygon) {
-				try {
-					const polygonAccounts = await window.phantom.polygon.request({
-						method: 'eth_requestAccounts',
-					});
-					addresses.polygon = polygonAccounts[0];
-				} catch (error) {
-					console.error('Error connecting to Polygon:', error);
 				}
 			}
 

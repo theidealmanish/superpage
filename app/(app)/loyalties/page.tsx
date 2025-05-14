@@ -90,7 +90,11 @@ interface UserTokenInfo {
 }
 
 export default function LoyaltiesPage() {
+	// Hooks
+	const { data: userProfile, isLoading: isLoadingProfile } = useUserProfile();
 	const router = useRouter();
+
+	// State
 	const [timeframe, setTimeframe] = useState('weekly');
 	const [creators, setCreators] = useState<Creator[]>([]);
 	const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -98,21 +102,17 @@ export default function LoyaltiesPage() {
 	const [userTokenInfo, setUserTokenInfo] = useState<UserTokenInfo | null>(
 		null
 	);
-	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingCreator, setIsLoadingCreator] = useState(false);
-
-	// Add these state variables in your component
 	const [showClaimModal, setShowClaimModal] = useState(false);
 	const [qrRef, setQrRef] = useState<HTMLDivElement | null>(null);
 	const [isClaiming, setIsClaiming] = useState(false);
 	const [claimTxId, setClaimTxId] = useState<string | null>(null);
 
-	// TODO: use hooks to get user profile and wallet address
-	const { data: userProfile } = useUserProfile();
-	console.log('User Profile:', userProfile);
-
-	// FIXME: This is a temporary fix for mobile devices
-	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+	// Get formatted token symbol
+	const tokenSymbol = selectedCreator?.token?.symbol || '$TOKEN';
+	const formattedTokenSymbol = tokenSymbol.startsWith('$')
+		? tokenSymbol
+		: `$${tokenSymbol}`;
 
 	// Fetch creators on first load
 	useEffect(() => {
@@ -123,21 +123,13 @@ export default function LoyaltiesPage() {
 	useEffect(() => {
 		if (selectedCreator) {
 			fetchCreatorStats(selectedCreator._id);
-			fetchLeaderboard(selectedCreator._id, timeframe);
 		}
 	}, [selectedCreator, timeframe]);
-
-	// Create a formatted token symbol for display
-	const tokenSymbol = selectedCreator?.token?.symbol || '$TOKEN';
-	const formattedTokenSymbol = tokenSymbol.startsWith('$')
-		? tokenSymbol
-		: `$${tokenSymbol}`;
 
 	// Update the fetchEngagement function to handle the new data structure
 	const fetchEngagement = async () => {
 		try {
-			setIsLoading(true);
-			const response = await axios.get('/engagements/me');
+			const response = await axios.get('/loyalties/me');
 
 			if (response.data && response.data.data) {
 				// Group engagements by creator and extract unique creators with earned points
@@ -153,7 +145,7 @@ export default function LoyaltiesPage() {
 							_id: creatorId,
 							name: engagement.creator.name,
 							username: engagement.creator.username,
-							avatarUrl: '', // Default if not provided in your data
+							avatarUrl: engagement.creator.avatarUrl || '', // Use avatar if provided
 							token: token,
 							earnedPoints: earnedPoints,
 							engagements: 1,
@@ -180,8 +172,6 @@ export default function LoyaltiesPage() {
 		} catch (error) {
 			console.error('Error fetching creators:', error);
 			toast.error('Failed to load creators');
-		} finally {
-			setIsLoading(false);
 		}
 	};
 
@@ -208,133 +198,24 @@ export default function LoyaltiesPage() {
 		}
 	};
 
-	// Enhanced fetchLeaderboard function
-	const fetchLeaderboard = async (creatorId: string, period: string) => {
-		try {
-			// You may need to modify this endpoint based on your API
-			const response = await axios.get(
-				`/creator/${creatorId}/leaderboard?period=${period}`
-			);
-
-			if (response.data && response.data.data) {
-				// Process the data to match LeaderboardItem interface
-				const leaderboardData = response.data.data.map(
-					(item: any, index: number) => ({
-						rank: index + 1,
-						userId: item.user || item.userId,
-						username: item.username || `user_${index + 1}`,
-						avatarUrl: item.avatarUrl || '',
-						points: item.earnedPoints || item.points || 0,
-						change: item.change || 'same',
-					})
-				);
-
-				setLeaderboard(leaderboardData);
-			} else {
-				setLeaderboard([]);
-			}
-		} catch (error) {
-			console.error('Error fetching leaderboard:', error);
-			toast.error('Failed to load leaderboard');
-			setLeaderboard([]);
-		}
+	// Helper function to get wallet address with fallback
+	const getWalletAddress = () => {
+		return userProfile?.wallets?.solana
+			? `${userProfile.wallets.solana.substring(
+					0,
+					6
+			  )}...${userProfile.wallets.solana.substring(
+					userProfile.wallets.solana.length - 4
+			  )}`
+			: 'Connect wallet';
 	};
 
-	// Update the generateSolanaPayQR function to handle SOL claims
-	// const generateSolanaPayQR = useCallback(() => {
-	// 	if (!qrRef) return;
-
-	// 	// Clear any existing content
-	// 	while (qrRef.firstChild) {
-	// 		qrRef.removeChild(qrRef.firstChild);
-	// 	}
-
-	// 	try {
-	// 		// Create a unique reference for this transaction
-	// 		const referenceUint8Array = new Uint8Array(16);
-	// 		window.crypto.getRandomValues(referenceUint8Array);
-	// 		// Convert to a PublicKey for the reference
-	// 		const reference = [new PublicKey(referenceUint8Array)];
-
-	// 		// Hardcoded recipient address (user's wallet)
-	// 		// In a real implementation, this would be the user's wallet address
-	// 		const userWalletAddress = 'CmtShTafYxCfpAehyvNacWXwGeG2RL9Nvp7T5Q2DheGj';
-
-	// 		// Calculate SOL amount based on points earned (1 point = 0.0001 SOL)
-	// 		const solAmount = new BigNumber(
-	// 			(selectedCreator?.earnedPoints || 0) * 0.0001
-	// 		);
-
-	// 		// Create the Solana Pay URL with parameters for SOL transfer TO the user
-	// 		const url = encodeURL({
-	// 			recipient: new PublicKey(userWalletAddress),
-	// 			splToken: new PublicKey('14Kmab4t7sjeKBQKCec3NK4JbyWZshkDRX65UCHaW2RT'),
-	// 			reference,
-	// 			label: `${selectedCreator.name} Reward`,
-	// 			message: `Claim ${solAmount} SOL from ${selectedCreator.name}`,
-	// 		});
-
-	// 		// Create and append the QR code to the container
-	// 		const qr = createQR(url, 300, 'transparent');
-	// 		if (qrRef) {
-	// 			qr.append(qrRef);
-	// 		}
-	// 	} catch (error) {
-	// 		console.error('Error generating QR code:', error);
-	// 		toast.error('Failed to generate payment QR code');
-	// 	}
-	// }, [qrRef, selectedCreator]);
-
-	// UseEffect to generate QR code when modal is opened
-	// useEffect(() => {
-	// 	if (showClaimModal && qrRef) {
-	// 		generateSolanaPayQR();
-	// 	}
-	// }, [showClaimModal, qrRef, generateSolanaPayQR]);
-
-	// Add this function to monitor the transaction status
-	// const monitorTransaction = async (reference: Uint8Array) => {
-	// 	setIsClaiming(true);
-
-	// 	try {
-	// 		// Connect to Solana cluster
-	// 		const connection = new Connection(clusterApiUrl('mainnet-beta'));
-
-	// 		// Wait for the transaction to be found
-	// 		const signatureInfo = await findReference(connection, reference[0]);
-
-	// 		// Validate the transaction
-	// 		await validateTransfer(connection, signatureInfo.signature, {
-	// 			recipient: new PublicKey('YOUR_TREASURY_WALLET_ADDRESS'),
-	// 			amount: (selectedCreator?.earnedPoints || 0) * 0.01,
-	// 			splToken: new PublicKey(selectedCreator?.token?._id || ''),
-	// 		});
-
-	// 		// Transaction successful
-	// 		setClaimTxId(signatureInfo.signature);
-
-	// 		// Update the user's token balance on your backend
-	// 		await axios.post(`/token/claim/${selectedCreator._id}`);
-
-	// 		toast.success('Tokens claimed successfully!');
-	// 	} catch (error) {
-	// 		if (error instanceof FindReferenceError) {
-	// 			// Transaction still not found, timeout
-	// 			toast.error('Transaction timeout. Please try again.');
-	// 		} else {
-	// 			console.error('Error claiming tokens:', error);
-	// 			toast.error('Failed to claim tokens');
-	// 		}
-	// 	} finally {
-	// 		setIsClaiming(false);
-	// 	}
-	// };
-
-	// Fallback for empty state or loading
-	if (isLoading) {
+	// Loading state
+	if (isLoadingProfile) {
 		return <Loading />;
 	}
 
+	// Empty state
 	if (creators.length === 0) {
 		return (
 			<div className='p-6 flex flex-col items-center justify-center h-[70vh]'>
@@ -351,6 +232,7 @@ export default function LoyaltiesPage() {
 		);
 	}
 
+	// Loading creator state
 	if (!selectedCreator) {
 		return <Loading />;
 	}
@@ -374,7 +256,7 @@ export default function LoyaltiesPage() {
 										alt={selectedCreator.name}
 									/>
 									<AvatarFallback>
-										{selectedCreator.name.charAt(0)}
+										{selectedCreator?.name?.charAt(0) || '?'}
 									</AvatarFallback>
 								</Avatar>
 								<div className='flex flex-col items-start text-left'>
@@ -404,7 +286,9 @@ export default function LoyaltiesPage() {
 											src={creator.avatarUrl || ''}
 											alt={creator.name}
 										/>
-										<AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
+										<AvatarFallback>
+											{creator?.name?.charAt(0) || '?'}
+										</AvatarFallback>
 									</Avatar>
 									<div>
 										<div className='font-medium'>{creator.name}</div>
@@ -503,7 +387,7 @@ export default function LoyaltiesPage() {
 													(selectedCreator?.earnedPoints || 0) * 0.01 * 100
 												) / 100
 											}
-											recipientAddress={userProfile.wallets.solana}
+											recipientAddress={userProfile?.wallets?.solana || ''}
 										/>
 									) : (
 										<Button variant='outline' className='w-full' disabled>
@@ -654,7 +538,7 @@ export default function LoyaltiesPage() {
 															}
 														/>
 														<AvatarFallback>
-															{user.username.charAt(0).toUpperCase()}
+															{user?.username?.charAt(0)?.toUpperCase() || '?'}
 														</AvatarFallback>
 													</Avatar>
 													<div className='font-medium'>@{user.username}</div>
@@ -724,13 +608,13 @@ export default function LoyaltiesPage() {
 				</Tabs>
 			)}
 
-			{/* Add this after your main component JSX but before the final closing tag */}
+			{/* QR Code Dialog */}
 			<Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
 				<DialogContent className='sm:max-w-[425px]'>
 					<DialogHeader>
 						<DialogTitle>Claim {formattedTokenSymbol} Tokens</DialogTitle>
 						<DialogDescription>
-							Scan this QR code with your Phantom wallet to claim your tokens
+							Scan this QR code with your wallet to claim your tokens
 						</DialogDescription>
 					</DialogHeader>
 
@@ -758,24 +642,25 @@ export default function LoyaltiesPage() {
 							<>
 								<div
 									ref={setQrRef}
-									className='qr-container bg-white p-4 rounded-lg mb-4'
+									className='qr-container bg-white p-4 rounded-lg mb-4 relative min-h-[300px] min-w-[300px] flex items-center justify-center'
 								>
 									{/* QR code will be rendered here */}
 									{isClaiming && (
-										<div className='absolute inset-0 flex items-center justify-center bg-white/80'>
+										<div className='absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg'>
 											<Loader2 className='h-8 w-8 animate-spin text-primary' />
 										</div>
 									)}
 								</div>
 
 								<div className='text-sm text-gray-500 text-center mb-4'>
-									<p>Scan with your Phantom wallet to claim</p>
+									<p>Scan with your wallet to claim</p>
 									<p className='mt-1 font-medium'>
 										{Math.round(
 											(selectedCreator?.earnedPoints || 0) * 0.01 * 100
 										) / 100}{' '}
 										{formattedTokenSymbol}
 									</p>
+									<p className='mt-2'>Wallet: {getWalletAddress()}</p>
 								</div>
 
 								<Button
@@ -785,35 +670,6 @@ export default function LoyaltiesPage() {
 								>
 									Cancel
 								</Button>
-
-								{/* Check if on mobile and provide a direct link for Phantom mobile app */}
-								{/* {isMobile && (
-									<Button
-										className='mt-4 w-full'
-										onClick={() => {
-											// Get the same URL used for the QR code
-											const url = encodeURL({
-												recipient: new PublicKey(
-													'YOUR_TREASURY_WALLET_ADDRESS'
-												), // Replace with your recipient address
-												splToken: new PublicKey(selectedCreator.token._id), // Use token ID or mint address
-												amount: (selectedCreator?.earnedPoints || 0) * 0.01,
-												reference: new Uint8Array(16),
-												label: `${selectedCreator.name} Token Claim`,
-												message: `Claim ${
-													Math.round(
-														(selectedCreator?.earnedPoints || 0) * 0.01 * 100
-													) / 100
-												} ${formattedTokenSymbol} tokens from ${
-													selectedCreator.name
-												}`,
-											});
-											window.location.href = url.toString();
-										}}
-									>
-										Open in Phantom App
-									</Button>
-								)} */}
 							</>
 						)}
 					</div>
