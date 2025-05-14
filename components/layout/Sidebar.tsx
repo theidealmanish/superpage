@@ -57,7 +57,7 @@ export const NavContent = () => {
 								key={item.name}
 								href={item.href}
 								className={cn(
-									'flex items-center px-3 py-3 text-gray-700 rounded-full hover:bg-gray-100 transition-colors',
+									'flex items-center justify-center lg:justify-start px-3 py-3 text-gray-700 rounded-full hover:bg-gray-100 transition-colors',
 									isActive && 'font-medium bg-gray-100'
 								)}
 							>
@@ -67,7 +67,7 @@ export const NavContent = () => {
 										isActive ? 'text-primary' : 'text-gray-500'
 									)}
 								/>
-								<span className='ml-4 text-lg hidden lg:inline-block'>
+								<span className='lg:ml-4 ml-0 text-lg hidden lg:inline-block'>
 									{item.name}
 								</span>
 							</Link>
