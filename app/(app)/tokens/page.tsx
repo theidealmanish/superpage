@@ -104,7 +104,7 @@ export default function TokensPage() {
 			name: '',
 			symbol: '',
 			network: '',
-			decimals: 9,
+			decimals: 2,
 			totalSupply: 1_000_000_000,
 			imageUrl: '',
 			description: '',

@@ -77,7 +77,10 @@ interface Profile {
 
 // Create form validation schema
 const profileSchema = z.object({
-	bio: z.string().max(500, { message: 'Bio must be less than 500 characters' }),
+	bio: z
+		.string()
+		.min(1, { message: 'Bio is required' })
+		.max(500, { message: 'Bio must be less than 500 characters' }),
 	country: z.string().min(1, { message: 'Please select a country' }),
 	socials: z.object({
 		x: z.string().optional(),
@@ -214,10 +217,6 @@ export default function ProfilePage() {
 			setIsSaving(false);
 		}
 	};
-
-	if (isLoading) {
-		return <Loading />;
-	}
 
 	return (
 		<div className='container mx-auto py-10 mt-16'>

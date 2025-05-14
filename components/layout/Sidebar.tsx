@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Add useRouter
 import {
 	Home,
 	User,
@@ -13,12 +13,23 @@ import {
 	Coins,
 	StoreIcon,
 	Store,
+	LogOut, // Add LogOut icon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { toast } from 'sonner'; // Import toast for notifications
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'; // Import dropdown components
 
 const navigation = [
 	{ name: 'Home', icon: Home, href: '/home' },
@@ -33,7 +44,18 @@ const navigation = [
 
 export const NavContent = () => {
 	const pathname = usePathname();
+	const router = useRouter();
 	const { data: userProfile, isLoading } = useUserProfile();
+
+	// Function to handle logout
+	const handleLogout = () => {
+		// Clear authentication token
+		localStorage.removeItem('token');
+		// Show success message
+		toast.success('Logged out successfully');
+		// Redirect to login page
+		router.push('/login');
+	};
 
 	return (
 		<div className='flex h-full flex-col justify-between'>
@@ -114,33 +136,67 @@ export const NavContent = () => {
 						</div>
 					</div>
 				) : (
-					<div className='flex items-center p-3 rounded-full hover:bg-gray-100 transition-colors cursor-pointer'>
-						<Avatar>
-							<AvatarImage src={userProfile.user.avatarUrl} />
-							<AvatarFallback>
-								{userProfile.user.name.substring(0, 2)}
-							</AvatarFallback>
-						</Avatar>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<div className='flex items-center p-3 rounded-full hover:bg-gray-100 transition-colors cursor-pointer'>
+								<Avatar>
+									<AvatarImage src={userProfile?.user?.avatarUrl} />
+									<AvatarFallback>
+										{userProfile?.user?.name?.substring(0, 2) || '??'}
+									</AvatarFallback>
+								</Avatar>
 
-						<div className='ml-3 hidden lg:block'>
-							<p className='font-medium text-sm'>{userProfile.user.name}</p>
-							<p className='text-gray-500 text-sm'>
-								@{userProfile.user.username}
-							</p>
-						</div>
+								<div className='ml-3 hidden lg:block'>
+									<p className='font-medium text-sm'>{userProfile?.user?.name}</p>
+									<p className='text-gray-500 text-sm'>
+										@{userProfile?.user?.username}
+									</p>
+								</div>
 
-						<div className='ml-auto hidden lg:block'>
-							<svg
-								width='16'
-								height='16'
-								viewBox='0 0 16 16'
-								fill='none'
-								xmlns='http://www.w3.org/2000/svg'
+								<div className='ml-auto hidden lg:block'>
+									<svg
+										width='16'
+										height='16'
+										viewBox='0 0 16 16'
+										fill='none'
+										xmlns='http://www.w3.org/2000/svg'
+									>
+										<path d='M8 10L12 6L4 6L8 10Z' fill='#6B7280' />
+									</svg>
+								</div>
+							</div>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className='w-56' align='end' forceMount>
+							<DropdownMenuLabel>My Account</DropdownMenuLabel>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuItem onClick={() => router.push('/profile')}>
+									<User className='mr-2 h-4 w-4' />
+									<span>Profile</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => router.push('/settings')}>
+									<div className='mr-2 h-4 w-4 flex items-center justify-center'>
+										⚙️
+									</div>
+									<span>Settings</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => router.push('/wallet')}>
+									<div className='mr-2 h-4 w-4 flex items-center justify-center'>
+										💰
+									</div>
+									<span>Wallet</span>
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={handleLogout}
+								className='text-red-600 focus:text-red-600'
 							>
-								<path d='M8 10L12 6L4 6L8 10Z' fill='#6B7280' />
-							</svg>
-						</div>
-					</div>
+								<LogOut className='mr-2 h-4 w-4' />
+								<span>Logout</span>
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 			</div>
 		</div>

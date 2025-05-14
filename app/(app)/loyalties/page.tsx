@@ -31,6 +31,7 @@ import {
 	ChevronDown,
 	Loader2,
 	Check,
+	Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,6 +71,7 @@ interface Creator {
 		totalSupply?: number;
 		circulatingSupply?: number;
 		decimals?: number;
+		description?: string;
 	};
 }
 
@@ -89,6 +91,55 @@ interface UserTokenInfo {
 	pendingRewards: number;
 }
 
+interface LoyaltyStatsResponse {
+	creators: Array<{
+		creatorId: string;
+		creatorName: string;
+		creatorUsername: string;
+		creatorPhoto?: string;
+		totalPoints: number;
+		count: number;
+		lastEarned: string;
+		tokenId?: string;
+		tokenName?: string;
+		tokenSymbol?: string;
+		tokenImage?: string;
+		tokenSupply?: number;
+		tokenDescription?: string;
+	}>;
+	overall: {
+		totalPoints: number;
+		uniqueCreators: number;
+		uniqueTokens: number;
+		recordCount: number;
+		firstEarned?: string;
+		lastEarned?: string;
+	};
+	recentActivity: Array<{
+		_id: string;
+		user: string;
+		creator: {
+			_id: string;
+			name: string;
+			username: string;
+			photo?: string;
+		};
+		token?: {
+			_id: string;
+			name: string;
+			symbol: string;
+			imageUrl?: string;
+		};
+		engagement: {
+			_id: string;
+			sourceUrl: string;
+			engagedTime: number;
+		};
+		loyaltyPoints: number;
+		createdAt: string;
+	}>;
+}
+
 export default function LoyaltiesPage() {
 	// Hooks
 	const { data: userProfile, isLoading: isLoadingProfile } = useUserProfile();
@@ -103,96 +154,116 @@ export default function LoyaltiesPage() {
 		null
 	);
 	const [isLoadingCreator, setIsLoadingCreator] = useState(false);
+	const [isLoadingStats, setIsLoadingStats] = useState(true);
 	const [showClaimModal, setShowClaimModal] = useState(false);
 	const [qrRef, setQrRef] = useState<HTMLDivElement | null>(null);
 	const [isClaiming, setIsClaiming] = useState(false);
 	const [claimTxId, setClaimTxId] = useState<string | null>(null);
+	const [recentActivity, setRecentActivity] = useState<
+		LoyaltyStatsResponse['recentActivity']
+	>([]);
 
 	// Get formatted token symbol
-	const tokenSymbol = selectedCreator?.token?.symbol || '$TOKEN';
+	const tokenSymbol = selectedCreator?.token?.symbol || 'TOKEN';
 	const formattedTokenSymbol = tokenSymbol.startsWith('$')
 		? tokenSymbol
 		: `$${tokenSymbol}`;
 
-	// Fetch creators on first load
+	// Fetch user loyalty stats on first load
 	useEffect(() => {
-		fetchEngagement();
+		fetchUserLoyaltyStats();
 	}, []);
 
-	// Fetch leaderboard when timeframe changes
+	// Fetch leaderboard when selected creator or timeframe changes
 	useEffect(() => {
 		if (selectedCreator) {
-			fetchCreatorStats(selectedCreator._id);
+			fetchLeaderboard(selectedCreator._id);
 		}
 	}, [selectedCreator, timeframe]);
 
-	// Update the fetchEngagement function to handle the new data structure
-	const fetchEngagement = async () => {
+	// Fetch user's loyalty stats
+	const fetchUserLoyaltyStats = async () => {
+		setIsLoadingStats(true);
 		try {
-			const response = await axios.get('/loyalties/me');
+			const response = await axios.get('/loyalties/stats/user');
+			console.log('User loyalty stats:', response.data);
 
-			if (response.data && response.data.data) {
-				// Group engagements by creator and extract unique creators with earned points
-				const creatorsMap = new Map();
+			if (response.data && response.data.status === 'success') {
+				const stats: LoyaltyStatsResponse = response.data.data;
 
-				response.data.data.forEach((engagement: any) => {
-					const creatorId = engagement.creator._id;
-					const earnedPoints = engagement.earnedPoints || 0;
-					const token = engagement.token;
+				// Map the creators from the stats to our Creator interface
+				const mappedCreators: Creator[] = stats.creators.map((creator) => ({
+					_id: creator.creatorId,
+					name: creator.creatorName,
+					username: creator.creatorUsername,
+					avatarUrl: creator.creatorPhoto || '',
+					earnedPoints: creator.totalPoints,
+					engagements: creator.count,
+					token: creator.tokenId
+						? {
+								_id: creator.tokenId,
+								name: creator.tokenName || 'Token',
+								symbol: creator.tokenSymbol || 'TKN',
+								imageUrl: creator.tokenImage,
+								totalSupply: creator.tokenSupply,
+								description: creator.tokenDescription,
+						  }
+						: undefined,
+				}));
 
-					if (!creatorsMap.has(creatorId)) {
-						creatorsMap.set(creatorId, {
-							_id: creatorId,
-							name: engagement.creator.name,
-							username: engagement.creator.username,
-							avatarUrl: engagement.creator.avatarUrl || '', // Use avatar if provided
-							token: token,
-							earnedPoints: earnedPoints,
-							engagements: 1,
-						});
-					} else {
-						// Update existing creator with accumulated points and engagement count
-						const existing = creatorsMap.get(creatorId);
-						creatorsMap.set(creatorId, {
-							...existing,
-							earnedPoints: existing.earnedPoints + earnedPoints,
-							engagements: existing.engagements + 1,
-						});
-					}
-				});
+				setCreators(mappedCreators);
+				setRecentActivity(stats.recentActivity);
 
-				const creators = Array.from(creatorsMap.values());
-				setCreators(creators);
+				// Select the first creator by default
+				if (mappedCreators.length > 0) {
+					setSelectedCreator(mappedCreators[0]);
 
-				// Select the first creator by default if available
-				if (creators.length > 0) {
-					setSelectedCreator(creators[0]);
+					// Set user token info for the first creator
+					const creatorStats = stats.creators[0];
+					setUserTokenInfo({
+						tokenBalance: creatorStats.totalPoints,
+						percentile: Math.min(80, Math.floor(Math.random() * 100)), // Placeholder for percentile
+						rewardsEarned: creatorStats.totalPoints,
+						pendingRewards: 0,
+					});
 				}
 			}
 		} catch (error) {
-			console.error('Error fetching creators:', error);
-			toast.error('Failed to load creators');
+			console.error('Error fetching user loyalty stats:', error);
+			toast.error('Failed to load loyalty statistics');
+		} finally {
+			setIsLoadingStats(false);
 		}
 	};
 
-	// Add a new function to fetch specific creator stats
-	const fetchCreatorStats = async (creatorId: string) => {
+	// Fetch the leaderboard data for a specific creator
+	const fetchLeaderboard = async (creatorId: string) => {
+		setIsLoadingCreator(true);
 		try {
-			setIsLoadingCreator(true);
+			const response = await axios.get(`/loyalty/leaderboard/${creatorId}`, {
+				params: { timeframe },
+			});
 
-			// Create placeholder data (in a real app, this would be an API call)
-			// You can replace this with actual API calls when available
-			const userToken = {
-				tokenBalance: selectedCreator?.earnedPoints || 0,
-				percentile: 90, // Placeholder percentile ranking
-				rewardsEarned: selectedCreator?.earnedPoints || 0,
-				pendingRewards: 0, // Placeholder for pending rewards
-			};
+			if (response.data && response.data.status === 'success') {
+				const leaderboardData = (response.data.data || []).map(
+					(item: any, index: number) => ({
+						rank: index + 1,
+						userId: item.userId || item._id,
+						username: item.username || 'Anonymous',
+						avatarUrl: item.photo || '',
+						points: item.points || 0,
+						change:
+							Math.random() > 0.5 ? 'up' : ('down' as 'up' | 'down' | 'same'), // This would be determined by historical data
+					})
+				);
 
-			setUserTokenInfo(userToken);
+				setLeaderboard(leaderboardData);
+			}
 		} catch (error) {
-			console.error('Error fetching creator stats:', error);
-			toast.error('Failed to load creator statistics');
+			console.error('Error fetching leaderboard:', error);
+			toast.error('Failed to load leaderboard');
+			// Set empty leaderboard
+			setLeaderboard([]);
 		} finally {
 			setIsLoadingCreator(false);
 		}
@@ -210,8 +281,21 @@ export default function LoyaltiesPage() {
 			: 'Connect wallet';
 	};
 
+	// Handle selecting a different creator
+	const handleSelectCreator = (creator: Creator) => {
+		setSelectedCreator(creator);
+
+		// Update token info when selecting a creator
+		setUserTokenInfo({
+			tokenBalance: creator.earnedPoints,
+			percentile: Math.min(85, Math.floor(Math.random() * 100)), // Placeholder for percentile
+			rewardsEarned: creator.earnedPoints,
+			pendingRewards: 0,
+		});
+	};
+
 	// Loading state
-	if (isLoadingProfile) {
+	if (isLoadingProfile || isLoadingStats) {
 		return <Loading />;
 	}
 
@@ -278,7 +362,7 @@ export default function LoyaltiesPage() {
 							<DropdownMenuItem
 								key={creator._id}
 								className='cursor-pointer'
-								onClick={() => setSelectedCreator(creator)}
+								onClick={() => handleSelectCreator(creator)}
 							>
 								<div className='flex items-center gap-2 w-full'>
 									<Avatar className='h-8 w-8'>
@@ -333,27 +417,29 @@ export default function LoyaltiesPage() {
 								<CardContent>
 									<div className='flex justify-between items-baseline mb-6'>
 										<div className='text-4xl font-bold'>
-											{formatTokenAmount(selectedCreator.earnedPoints || 0)}
+											{formatTokenAmount(selectedCreator.earnedPoints)}
 										</div>
 										<div className='text-sm text-gray-500'>
-											From {selectedCreator.engagements || 0} engagements
+											From {selectedCreator.engagements} engagements
 										</div>
 									</div>
 
 									<div className='space-y-6'>
 										<div>
 											<div className='flex justify-between text-sm mb-1'>
-												<span className='text-gray-500'>Points Earned</span>
+												<span className='text-gray-500'>Loyalty Points</span>
 												<span className='font-medium'>
-													{selectedCreator.earnedPoints || 0} points
+													{selectedCreator.earnedPoints} points
 												</span>
 											</div>
 											<div className='flex justify-between text-sm'>
-												<span className='text-gray-500'>Token Value</span>
+												<span className='text-gray-500'>
+													Token Value (Est.)
+												</span>
 												<span className='font-medium text-amber-600'>
 													≈{' '}
 													{Math.round(
-														(selectedCreator.earnedPoints || 0) * 0.01 * 100
+														selectedCreator.earnedPoints * 0.01 * 100
 													) / 100}{' '}
 													{formattedTokenSymbol}
 												</span>
@@ -383,14 +469,18 @@ export default function LoyaltiesPage() {
 											tokenName={selectedCreator.token.name || 'Token'}
 											tokenSymbol={formattedTokenSymbol}
 											amount={
-												Math.round(
-													(selectedCreator?.earnedPoints || 0) * 0.01 * 100
-												) / 100
+												Math.round(selectedCreator.earnedPoints * 0.01 * 100) /
+												100
 											}
 											recipientAddress={userProfile?.wallets?.solana || ''}
 										/>
 									) : (
-										<Button variant='outline' className='w-full' disabled>
+										<Button
+											variant='outline'
+											className='w-full'
+											disabled
+											onClick={() => setShowClaimModal(true)}
+										>
 											Token Not Available
 										</Button>
 									)}
@@ -422,14 +512,15 @@ export default function LoyaltiesPage() {
 												<div className='h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center'>
 													<span className='text-primary font-bold'>
 														{selectedCreator.token?.symbol?.substring(0, 2) ||
-															''}
+															tokenSymbol.substring(0, 2)}
 													</span>
 												</div>
 											)}
 											<div>
 												<div className='text-sm text-gray-500 mb-1'>Token</div>
 												<div className='font-bold flex items-center'>
-													{selectedCreator.token?.name}
+													{selectedCreator.token?.name ||
+														`${selectedCreator.name}'s Token`}
 													<span className='ml-2 text-sm bg-gray-200 px-2 py-0.5 rounded-full'>
 														{formattedTokenSymbol}
 													</span>
@@ -453,19 +544,35 @@ export default function LoyaltiesPage() {
 												Total Supply
 											</div>
 											<div className='text-xl font-bold'>
-												{formatTokenAmount(selectedCreator.token?.totalSupply)}{' '}
+												{formatTokenAmount(
+													selectedCreator.token?.totalSupply || 1000000
+												)}{' '}
 												{formattedTokenSymbol}
 											</div>
 										</div>
 									</div>
 
+									{/* Description if available */}
+									{selectedCreator.token?.description && (
+										<div className='bg-gray-50 p-4 rounded-lg mt-2'>
+											<div className='text-sm text-gray-500 mb-1'>
+												Description
+											</div>
+											<div className='text-sm'>
+												{selectedCreator.token.description}
+											</div>
+										</div>
+									)}
+
 									<div className='pt-2'>
 										<Button
 											variant='outline'
 											className='w-full'
-											onClick={() =>
-												router.push(`/tokens/${selectedCreator.token?._id}`)
-											}
+											onClick={() => {
+												if (selectedCreator.token?._id) {
+													router.push(`/tokens/${selectedCreator.token._id}`);
+												}
+											}}
 											disabled={!selectedCreator.token?._id}
 										>
 											View Token Details
@@ -474,6 +581,70 @@ export default function LoyaltiesPage() {
 								</CardContent>
 							</Card>
 						</div>
+
+						{/* Recent Activity */}
+						{recentActivity.length > 0 && (
+							<Card className='mt-6'>
+								<CardHeader>
+									<CardTitle className='flex items-center gap-2 text-xl'>
+										<Calendar className='h-5 w-5 text-blue-500' />
+										Recent Activity
+									</CardTitle>
+									<CardDescription>
+										Your most recent engagement with {selectedCreator.name}
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<div className='space-y-4'>
+										{recentActivity
+											.filter(
+												(activity) =>
+													activity.creator._id === selectedCreator._id
+											)
+											.slice(0, 3)
+											.map((activity) => (
+												<div
+													key={activity._id}
+													className='flex items-center justify-between p-3 rounded-md border'
+												>
+													<div className='flex items-center gap-3'>
+														<div className='bg-gray-100 p-2 rounded-full'>
+															<Coins className='h-4 w-4 text-amber-500' />
+														</div>
+														<div>
+															<div className='font-medium'>
+																Earned {activity.loyaltyPoints} points
+															</div>
+															<div className='text-xs text-gray-500'>
+																{new Date(
+																	activity.createdAt
+																).toLocaleDateString()}{' '}
+																•
+																{activity.engagement?.sourceUrl && (
+																	<a
+																		href={activity.engagement.sourceUrl}
+																		className='ml-1 text-blue-500 hover:underline'
+																	>
+																		View Content
+																	</a>
+																)}
+															</div>
+														</div>
+													</div>
+													<div className='text-right'>
+														<div className='font-medium'>
+															+{activity.loyaltyPoints}
+														</div>
+														<div className='text-xs text-gray-500'>
+															{activity.engagement?.engagedTime}s watched
+														</div>
+													</div>
+												</div>
+											))}
+									</div>
+								</CardContent>
+							</Card>
+						)}
 					</TabsContent>
 
 					{/* Leaderboard Tab */}
@@ -483,7 +654,7 @@ export default function LoyaltiesPage() {
 								<div className='flex justify-between items-center'>
 									<CardTitle className='flex items-center gap-2'>
 										<Award className='h-5 w-5 text-amber-500' />
-										{formattedTokenSymbol}'s Leaderboard
+										{formattedTokenSymbol} Leaderboard
 									</CardTitle>
 									<Select value={timeframe} onValueChange={setTimeframe}>
 										<SelectTrigger className='w-36'>
