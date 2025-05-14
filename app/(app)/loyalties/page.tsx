@@ -160,6 +160,7 @@ export default function LoyaltiesPage() {
 	);
 	const [isLoadingCreator, setIsLoadingCreator] = useState(false);
 	const [isLoadingStats, setIsLoadingStats] = useState(true);
+	const [isInitialLoad, setIsInitialLoad] = useState(true);
 	const [showClaimModal, setShowClaimModal] = useState(false);
 	const [qrRef, setQrRef] = useState<HTMLDivElement | null>(null);
 	const [isClaiming, setIsClaiming] = useState(false);
@@ -181,10 +182,10 @@ export default function LoyaltiesPage() {
 
 	// Fetch leaderboard when selected creator or timeframe changes
 	useEffect(() => {
-		if (selectedCreator) {
+		if (selectedCreator && !isInitialLoad) {
 			fetchLeaderboard(selectedCreator._id);
 		}
-	}, [selectedCreator, timeframe]);
+	}, [selectedCreator, timeframe, isInitialLoad]);
 
 	// Fetch user's loyalty stats
 	const fetchUserLoyaltyStats = async () => {
@@ -231,6 +232,9 @@ export default function LoyaltiesPage() {
 						rewardsEarned: creatorStats.totalPoints,
 						pendingRewards: 0,
 					});
+
+					// Fetch leaderboard for the first creator
+					await fetchLeaderboard(mappedCreators[0]._id);
 				}
 			}
 		} catch (error) {
@@ -238,6 +242,7 @@ export default function LoyaltiesPage() {
 			toast.error('Failed to load loyalty statistics');
 		} finally {
 			setIsLoadingStats(false);
+			setIsInitialLoad(false);
 		}
 	};
 
@@ -311,13 +316,11 @@ export default function LoyaltiesPage() {
 		});
 	};
 
-	// Loading state
-	if (isLoadingProfile && isLoadingStats) {
-		return <Loading />;
-	}
+	// Determine if we're in a main loading state
+	const isLoading = isLoadingProfile || (isLoadingStats && isInitialLoad);
 
 	// Empty state
-	if (creators.length === 0) {
+	if (!isLoading && creators.length === 0) {
 		return (
 			<div className='p-6 flex flex-col items-center justify-center h-[70vh]'>
 				<Coins className='h-16 w-16 text-gray-300 mb-4' />
@@ -333,13 +336,13 @@ export default function LoyaltiesPage() {
 		);
 	}
 
-	// Loading creator state
-	if (!selectedCreator) {
+	// Main loading state - shows only once during initial load
+	if (isLoading) {
 		return <Loading />;
 	}
 
 	return (
-		<div className='p-6 flex flex-col h-full'>
+		<div className='container mx-auto p-6 flex flex-col h-full'>
 			<div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-4'>
 				<h1 className='text-3xl font-bold'>Loyalties</h1>
 			</div>
@@ -353,8 +356,8 @@ export default function LoyaltiesPage() {
 							<div className='flex items-center gap-2 truncate'>
 								<Avatar className='h-8 w-8'>
 									<AvatarImage
-										src={selectedCreator.avatarUrl || ''}
-										alt={selectedCreator.name}
+										src={selectedCreator?.avatarUrl || ''}
+										alt={selectedCreator?.name}
 									/>
 									<AvatarFallback>
 										{selectedCreator?.name?.charAt(0) || '?'}
@@ -362,10 +365,10 @@ export default function LoyaltiesPage() {
 								</Avatar>
 								<div className='flex flex-col items-start text-left'>
 									<span className='text-sm font-medium truncate'>
-										{selectedCreator.name}
+										{selectedCreator?.name}
 									</span>
 									<span className='text-xs text-muted-foreground'>
-										@{selectedCreator.username}
+										@{selectedCreator?.username}
 									</span>
 								</div>
 							</div>
@@ -404,599 +407,588 @@ export default function LoyaltiesPage() {
 				</DropdownMenu>
 			</div>
 
-			{isLoadingCreator ? (
-				<div className='flex items-center justify-center py-12'>
-					<Loader2 className='h-8 w-8 animate-spin text-primary' />
-				</div>
-			) : (
-				<Tabs defaultValue='dashboard' className='w-full'>
-					<TabsList className='mb-6'>
-						<TabsTrigger value='dashboard'>Dashboard</TabsTrigger>
-						<TabsTrigger value='leaderboard'>Leaderboard</TabsTrigger>
-						<TabsTrigger value='rewards'>Rewards</TabsTrigger>
-					</TabsList>
+			<Tabs defaultValue='dashboard' className='w-full'>
+				<TabsList className='mb-6'>
+					<TabsTrigger value='dashboard'>Dashboard</TabsTrigger>
+					<TabsTrigger value='leaderboard'>Leaderboard</TabsTrigger>
+					<TabsTrigger value='rewards'>Rewards</TabsTrigger>
+				</TabsList>
 
-					{/* Dashboard Tab */}
-					<TabsContent value='dashboard'>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-							{/* Your Token Card */}
-							<Card>
-								<CardHeader className='pb-3'>
-									<CardTitle className='flex items-center gap-2 text-xl'>
-										<Coins className='h-5 w-5 text-amber-500' />
-										{formattedTokenSymbol} Holding
-									</CardTitle>
-									<CardDescription>
-										Summary of your token holdings from @
-										{selectedCreator.username}
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className='flex justify-between items-baseline mb-6'>
-										<div className='text-4xl font-bold'>
-											{formatTokenAmount(selectedCreator.earnedPoints)}
+				{/* Dashboard Tab */}
+				<TabsContent value='dashboard'>
+					<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+						{/* Your Token Card */}
+						<Card>
+							<CardHeader className='pb-3'>
+								<CardTitle className='flex items-center gap-2 text-xl'>
+									<Coins className='h-5 w-5 text-amber-500' />
+									{formattedTokenSymbol} Holding
+								</CardTitle>
+								<CardDescription>
+									Summary of your token holdings from @
+									{selectedCreator?.username}
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className='flex justify-between items-baseline mb-6'>
+									<div className='text-4xl font-bold'>
+										{formatTokenAmount(selectedCreator?.earnedPoints || 0)}
+									</div>
+									<div className='text-sm text-gray-500'>
+										From {selectedCreator?.engagements || 0} engagements
+									</div>
+								</div>
+
+								<div className='space-y-6'>
+									<div>
+										<div className='flex justify-between text-sm mb-1'>
+											<span className='text-gray-500'>Loyalty Points</span>
+											<span className='font-medium'>
+												{selectedCreator?.earnedPoints || 0} points
+											</span>
 										</div>
-										<div className='text-sm text-gray-500'>
-											From {selectedCreator.engagements} engagements
+										<div className='flex justify-between text-sm'>
+											<span className='text-gray-500'>
+												Token Value (Not listed yet)
+											</span>
+											<span className='font-medium text-amber-600'>
+												≈{' '}
+												{Math.round(
+													(selectedCreator?.earnedPoints || 0) * 0.01 * 100
+												) / 100}{' '}
+												{formattedTokenSymbol}
+											</span>
 										</div>
 									</div>
 
-									<div className='space-y-6'>
-										<div>
-											<div className='flex justify-between text-sm mb-1'>
-												<span className='text-gray-500'>Loyalty Points</span>
-												<span className='font-medium'>
-													{selectedCreator.earnedPoints} points
+									<div>
+										<div className='flex justify-between mb-1'>
+											<span className='text-sm text-gray-500'>
+												Your Position
+											</span>
+											<span className='text-sm font-medium'>
+												Top {100 - (userTokenInfo?.percentile || 0)}%
+											</span>
+										</div>
+										<Progress
+											value={userTokenInfo?.percentile || 0}
+											className='h-2'
+										/>
+									</div>
+								</div>
+							</CardContent>
+							<CardFooter>
+								{selectedCreator?.token?._id ? (
+									<TokenClaimQR
+										tokenId={selectedCreator.token._id}
+										tokenName={selectedCreator.token.name || 'Token'}
+										tokenSymbol={formattedTokenSymbol}
+										amount={
+											Math.round(
+												(selectedCreator.earnedPoints || 0) * 0.01 * 100
+											) / 100
+										}
+										recipientAddress={userProfile?.wallets?.solana || ''}
+									/>
+								) : (
+									<Button
+										variant='outline'
+										className='w-full'
+										disabled
+										onClick={() => setShowClaimModal(true)}
+									>
+										Token Not Available
+									</Button>
+								)}
+							</CardFooter>
+						</Card>
+
+						{/* Token Stats Card */}
+						<Card>
+							<CardHeader className='pb-3'>
+								<CardTitle className='flex items-center gap-2 text-xl'>
+									<Diamond className='h-5 w-5 text-indigo-500' />
+									{selectedCreator?.token?.name || 'Token'} Information
+								</CardTitle>
+								<CardDescription>
+									Statistics about {selectedCreator?.name}'s{' '}
+									{formattedTokenSymbol} token
+								</CardDescription>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+								<div className='grid grid-cols-1 gap-4 mb-4'>
+									<div className='bg-gray-50 p-4 rounded-lg flex items-center space-x-4'>
+										{selectedCreator?.token?.imageUrl ? (
+											<img
+												src={selectedCreator.token.imageUrl}
+												alt={selectedCreator.token.name}
+												className='h-12 w-12 rounded-full'
+											/>
+										) : (
+											<div className='h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center'>
+												<span className='text-primary font-bold'>
+													{selectedCreator?.token?.symbol?.substring(0, 2) ||
+														tokenSymbol.substring(0, 2)}
 												</span>
 											</div>
-											<div className='flex justify-between text-sm'>
-												<span className='text-gray-500'>
-													Token Value (Not listed yet)
-												</span>
-												<span className='font-medium text-amber-600'>
-													≈{' '}
-													{Math.round(
-														selectedCreator.earnedPoints * 0.01 * 100
-													) / 100}{' '}
+										)}
+										<div>
+											<div className='text-sm text-gray-500 mb-1'>Token</div>
+											<div className='font-bold flex items-center'>
+												{selectedCreator?.token?.name ||
+													`${selectedCreator?.name}'s Token`}
+												<span className='ml-2 text-sm bg-gray-200 px-2 py-0.5 rounded-full'>
 													{formattedTokenSymbol}
 												</span>
 											</div>
 										</div>
-
-										<div>
-											<div className='flex justify-between mb-1'>
-												<span className='text-sm text-gray-500'>
-													Your Position
-												</span>
-												<span className='text-sm font-medium'>
-													Top {100 - (userTokenInfo?.percentile || 0)}%
-												</span>
-											</div>
-											<Progress
-												value={userTokenInfo?.percentile || 0}
-												className='h-2'
-											/>
-										</div>
 									</div>
-								</CardContent>
-								<CardFooter>
-									{selectedCreator?.token?._id ? (
-										<TokenClaimQR
-											tokenId={selectedCreator.token._id}
-											tokenName={selectedCreator.token.name || 'Token'}
-											tokenSymbol={formattedTokenSymbol}
-											amount={
-												Math.round(selectedCreator.earnedPoints * 0.01 * 100) /
-												100
-											}
-											recipientAddress={userProfile?.wallets?.solana || ''}
-										/>
-									) : (
-										<Button
-											variant='outline'
-											className='w-full'
-											disabled
-											onClick={() => setShowClaimModal(true)}
-										>
-											Token Not Available
-										</Button>
-									)}
-								</CardFooter>
-							</Card>
-
-							{/* Token Stats Card */}
-							<Card>
-								<CardHeader className='pb-3'>
-									<CardTitle className='flex items-center gap-2 text-xl'>
-										<Diamond className='h-5 w-5 text-indigo-500' />
-										{selectedCreator.token?.name || 'Token'} Information
-									</CardTitle>
-									<CardDescription>
-										Statistics about {selectedCreator.name}'s{' '}
-										{formattedTokenSymbol} token
-									</CardDescription>
-								</CardHeader>
-								<CardContent className='space-y-4'>
-									<div className='grid grid-cols-1 gap-4 mb-4'>
-										<div className='bg-gray-50 p-4 rounded-lg flex items-center space-x-4'>
-											{selectedCreator.token?.imageUrl ? (
-												<img
-													src={selectedCreator.token.imageUrl}
-													alt={selectedCreator.token.name}
-													className='h-12 w-12 rounded-full'
-												/>
-											) : (
-												<div className='h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center'>
-													<span className='text-primary font-bold'>
-														{selectedCreator.token?.symbol?.substring(0, 2) ||
-															tokenSymbol.substring(0, 2)}
-													</span>
-												</div>
-											)}
-											<div>
-												<div className='text-sm text-gray-500 mb-1'>Token</div>
-												<div className='font-bold flex items-center'>
-													{selectedCreator.token?.name ||
-														`${selectedCreator.name}'s Token`}
-													<span className='ml-2 text-sm bg-gray-200 px-2 py-0.5 rounded-full'>
-														{formattedTokenSymbol}
-													</span>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									<div className='grid grid-cols-2 gap-4'>
-										<div className='bg-gray-50 p-4 rounded-lg'>
-											<div className='text-sm text-gray-500 mb-1'>
-												Points Earned
-											</div>
-											<div className='text-xl font-bold'>
-												{formatTokenAmount(selectedCreator.earnedPoints)}
-											</div>
-										</div>
-
-										<div className='bg-gray-50 p-4 rounded-lg'>
-											<div className='text-sm text-gray-500 mb-1'>
-												Total Supply
-											</div>
-											<div className='text-xl font-bold'>
-												{formatTokenAmount(
-													selectedCreator.token?.totalSupply || 1000000
-												)}{' '}
-												{formattedTokenSymbol}
-											</div>
-										</div>
-									</div>
-
-									{/* Description if available */}
-									{selectedCreator.token?.description && (
-										<div className='bg-gray-50 p-4 rounded-lg mt-2'>
-											<div className='text-sm text-gray-500 mb-1'>
-												Description
-											</div>
-											<div className='text-sm'>
-												{selectedCreator.token.description}
-											</div>
-										</div>
-									)}
-
-									<div className='pt-2'>
-										<Button
-											variant='outline'
-											className='w-full'
-											onClick={() => {
-												if (selectedCreator.token?._id) {
-													router.push(`/tokens/${selectedCreator.token._id}`);
-												}
-											}}
-											disabled={!selectedCreator.token?._id}
-										>
-											View Token Details
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						</div>
-
-						{/* Recent Activity */}
-						{recentActivity.length > 0 && (
-							<Card className='mt-6'>
-								<CardHeader>
-									<CardTitle className='flex items-center gap-2 text-xl'>
-										<Calendar className='h-5 w-5 text-blue-500' />
-										Recent Activity
-									</CardTitle>
-									<CardDescription>
-										Your most recent engagement with {selectedCreator.name}
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className='space-y-4'>
-										{recentActivity
-											.filter(
-												(activity) =>
-													activity.creator._id === selectedCreator._id
-											)
-											.slice(0, 3)
-											.map((activity) => (
-												<div
-													key={activity._id}
-													className='flex items-center justify-between p-3 rounded-md border'
-												>
-													<div className='flex items-center gap-3'>
-														<div className='bg-gray-100 p-2 rounded-full'>
-															<Coins className='h-4 w-4 text-amber-500' />
-														</div>
-														<div>
-															<div className='font-medium'>
-																Earned {activity.loyaltyPoints} points
-															</div>
-															<div className='text-xs text-gray-500'>
-																{new Date(
-																	activity.createdAt
-																).toLocaleDateString()}{' '}
-																•
-																{activity.engagement?.sourceUrl && (
-																	<a
-																		href={activity.engagement.sourceUrl}
-																		className='ml-1 text-blue-500 hover:underline'
-																	>
-																		View Content
-																	</a>
-																)}
-															</div>
-														</div>
-													</div>
-													<div className='text-right'>
-														<div className='font-medium'>
-															+{activity.loyaltyPoints}
-														</div>
-														<div className='text-xs text-gray-500'>
-															{activity.engagement?.engagedTime}s watched
-														</div>
-													</div>
-												</div>
-											))}
-									</div>
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-
-					{/* Enhanced Leaderboard Tab */}
-					<TabsContent value='leaderboard'>
-						<Card>
-							<CardHeader>
-								<div className='flex justify-between items-center'>
-									<CardTitle className='flex items-center gap-2'>
-										<Award className='h-5 w-5 text-amber-500' />
-										{formattedTokenSymbol} Leaderboard
-									</CardTitle>
-									<Select value={timeframe} onValueChange={setTimeframe}>
-										<SelectTrigger className='w-36'>
-											<SelectValue placeholder='Select timeframe' />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value='daily'>Daily</SelectItem>
-											<SelectItem value='weekly'>Weekly</SelectItem>
-											<SelectItem value='monthly'>Monthly</SelectItem>
-											<SelectItem value='alltime'>All Time</SelectItem>
-										</SelectContent>
-									</Select>
 								</div>
+
+								<div className='grid grid-cols-2 gap-4'>
+									<div className='bg-gray-50 p-4 rounded-lg'>
+										<div className='text-sm text-gray-500 mb-1'>
+											Points Earned
+										</div>
+										<div className='text-xl font-bold'>
+											{formatTokenAmount(selectedCreator?.earnedPoints || 0)}
+										</div>
+									</div>
+
+									<div className='bg-gray-50 p-4 rounded-lg'>
+										<div className='text-sm text-gray-500 mb-1'>
+											Total Supply
+										</div>
+										<div className='text-xl font-bold'>
+											{formatTokenAmount(
+												selectedCreator?.token?.totalSupply || 1000000
+											)}{' '}
+											{formattedTokenSymbol}
+										</div>
+									</div>
+								</div>
+
+								{/* Description if available */}
+								{selectedCreator?.token?.description && (
+									<div className='bg-gray-50 p-4 rounded-lg mt-2'>
+										<div className='text-sm text-gray-500 mb-1'>
+											Description
+										</div>
+										<div className='text-sm'>
+											{selectedCreator.token.description}
+										</div>
+									</div>
+								)}
+
+								<div className='pt-2'>
+									<Button
+										variant='outline'
+										className='w-full'
+										onClick={() => {
+											if (selectedCreator?.token?._id) {
+												router.push(`/tokens/${selectedCreator.token._id}`);
+											}
+										}}
+										disabled={!selectedCreator?.token?._id}
+									>
+										View Token Details
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+
+					{/* Recent Activity */}
+					{recentActivity.length > 0 && selectedCreator && (
+						<Card className='mt-6'>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2 text-xl'>
+									<Calendar className='h-5 w-5 text-blue-500' />
+									Recent Activity
+								</CardTitle>
 								<CardDescription>
-									Top supporters in the {timeframe} leaderboard for{' '}
-									{selectedCreator.name}
+									Your most recent engagement with {selectedCreator.name}
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
-								{isLoadingCreator ? (
-									<div className='flex justify-center p-8'>
-										<Loader2 className='h-8 w-8 animate-spin text-primary' />
-									</div>
-								) : leaderboard.length === 0 ? (
-									<div className='text-center py-12'>
-										<Award className='h-12 w-12 text-gray-300 mx-auto mb-4' />
-										<p className='text-lg font-medium text-gray-700'>
-											No leaderboard data yet
-										</p>
-										<p className='text-gray-500'>
-											Be the first to earn points!
-										</p>
-									</div>
-								) : (
-									<>
-										{/* Top 3 Podium Section */}
-										<div className='mb-8'>
-											<div className='flex justify-center items-end gap-4 h-44'>
-												{/* Second Place */}
-												{leaderboard.length > 1 ? (
-													<motion.div
-														initial={{ y: 100, opacity: 0 }}
-														animate={{ y: 0, opacity: 1 }}
-														transition={{
-															delay: 0.2,
-															type: 'spring',
-															stiffness: 100,
-														}}
-														className='flex flex-col items-center'
-													>
-														<div className='mb-2'>
-															<span className='text-2xl'>🥈</span>
-														</div>
-														<Avatar className='h-16 w-16 border-2 border-gray-200'>
-															<AvatarImage
-																src={
-																	leaderboard[1].avatarUrl ||
-																	`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[1].username}`
-																}
-															/>
-															<AvatarFallback>
-																{leaderboard[1]?.username
-																	?.charAt(0)
-																	?.toUpperCase() || '2'}
-															</AvatarFallback>
-														</Avatar>
-														<motion.div
-															className='h-24 w-20 bg-gray-100 rounded-t-lg mt-2 flex items-center justify-center'
-															initial={{ height: 0 }}
-															animate={{ height: '6rem' }}
-															transition={{ delay: 0.3, duration: 0.5 }}
-														>
-															<div className='text-center'>
-																<p className='font-medium text-sm'>
-																	{leaderboard[1].username}
-																</p>
-																<p className='font-bold text-lg'>
-																	{leaderboard[1].points.toFixed(2)}
-																</p>
-															</div>
-														</motion.div>
-													</motion.div>
-												) : (
-													<div className='w-20'></div> // Empty placeholder to maintain layout
-												)}
-
-												{/* First Place */}
-												{leaderboard.length > 0 ? (
-													<motion.div
-														initial={{ y: 100, opacity: 0 }}
-														animate={{ y: 0, opacity: 1 }}
-														transition={{ type: 'spring', stiffness: 100 }}
-														className='flex flex-col items-center'
-													>
-														<div className='mb-2'>
-															<span className='text-2xl'>🥇</span>
-														</div>
-														<Avatar className='h-20 w-20 border-4 border-amber-300'>
-															<AvatarImage
-																src={
-																	leaderboard[0].avatarUrl ||
-																	`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[0].username}`
-																}
-															/>
-															<AvatarFallback>
-																{leaderboard[0]?.username
-																	?.charAt(0)
-																	?.toUpperCase() || '1'}
-															</AvatarFallback>
-														</Avatar>
-														<motion.div
-															className='h-32 w-24 bg-amber-50 rounded-t-lg mt-2 flex items-center justify-center'
-															initial={{ height: 0 }}
-															animate={{ height: '8rem' }}
-															transition={{ duration: 0.7 }}
-														>
-															<div className='text-center'>
-																<p className='font-medium'>
-																	{leaderboard[0].username}
-																</p>
-																<p className='font-bold text-xl'>
-																	{leaderboard[0].points.toFixed(2)}
-																</p>
-															</div>
-														</motion.div>
-													</motion.div>
-												) : (
-													<div className='w-24'></div> // Empty placeholder to maintain layout
-												)}
-
-												{/* Third Place */}
-												{leaderboard.length > 2 ? (
-													<motion.div
-														initial={{ y: 100, opacity: 0 }}
-														animate={{ y: 0, opacity: 1 }}
-														transition={{
-															delay: 0.4,
-															type: 'spring',
-															stiffness: 100,
-														}}
-														className='flex flex-col items-center'
-													>
-														<div className='mb-2'>
-															<span className='text-2xl'>🥉</span>
-														</div>
-														<Avatar className='h-14 w-14 border-2 border-gray-200'>
-															<AvatarImage
-																src={
-																	leaderboard[2].avatarUrl ||
-																	`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[2].username}`
-																}
-															/>
-															<AvatarFallback>
-																{leaderboard[2]?.username
-																	?.charAt(0)
-																	?.toUpperCase() || '3'}
-															</AvatarFallback>
-														</Avatar>
-														<motion.div
-															className='h-16 w-20 bg-gray-100 rounded-t-lg mt-2 flex items-center justify-center'
-															initial={{ height: 0 }}
-															animate={{ height: '4rem' }}
-															transition={{ delay: 0.5, duration: 0.5 }}
-														>
-															<div className='text-center'>
-																<p className='font-medium text-sm'>
-																	{leaderboard[2].username}
-																</p>
-																<p className='font-bold'>
-																	{leaderboard[2].points.toFixed(2)}
-																</p>
-															</div>
-														</motion.div>
-													</motion.div>
-												) : (
-													<div className='w-20'></div> // Empty placeholder to maintain layout
-												)}
-											</div>
-										</div>
-
-										{/* Full Leaderboard List */}
-										<div className='rounded-md border mt-8'>
-											<div className='grid grid-cols-12 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-500'>
-												<div className='col-span-1'>#</div>
-												<div className='col-span-7'>User</div>
-												<div className='col-span-3 text-right'>Points</div>
-												<div className='col-span-1'></div>
-											</div>
-
-											{leaderboard.map((user) => (
-												<motion.div
-													key={user.rank}
-													initial={{ opacity: 0, y: 10 }}
-													animate={{ opacity: 1, y: 0 }}
-													transition={{ delay: user.rank * 0.05 }}
-													className={cn(
-														'grid grid-cols-12 py-3 px-4 border-t items-center',
-														user.rank <= 3 ? 'bg-amber-50/50' : ''
-													)}
-												>
-													<div className='col-span-1 font-medium flex items-center'>
-														{user.rank <= 3 ? (
-															<span className='mr-1'>
-																{user.rank === 1 && '🥇'}
-																{user.rank === 2 && '🥈'}
-																{user.rank === 3 && '🥉'}
-															</span>
-														) : (
-															user.rank
-														)}
+								<div className='space-y-4'>
+									{recentActivity
+										.filter(
+											(activity) => activity.creator._id === selectedCreator._id
+										)
+										.slice(0, 3)
+										.map((activity) => (
+											<div
+												key={activity._id}
+												className='flex items-center justify-between p-3 rounded-md border'
+											>
+												<div className='flex items-center gap-3'>
+													<div className='bg-gray-100 p-2 rounded-full'>
+														<Coins className='h-4 w-4 text-amber-500' />
 													</div>
-													<div className='col-span-7 flex items-center gap-3'>
-														<Avatar className='h-8 w-8'>
-															<AvatarImage
-																src={
-																	user.avatarUrl ||
-																	`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`
-																}
-															/>
-															<AvatarFallback>
-																{user?.username?.charAt(0)?.toUpperCase() ||
-																	'?'}
-															</AvatarFallback>
-														</Avatar>
-														<div>
-															<div className='font-medium'>
-																@{user.username}
-															</div>
-															{user.name && (
-																<div className='text-xs text-gray-500'>
-																	{user.name}
-																</div>
+													<div>
+														<div className='font-medium'>
+															Earned {activity.loyaltyPoints} points
+														</div>
+														<div className='text-xs text-gray-500'>
+															{new Date(
+																activity.createdAt
+															).toLocaleDateString()}{' '}
+															•
+															{activity.engagement?.sourceUrl && (
+																<a
+																	href={activity.engagement.sourceUrl}
+																	className='ml-1 text-blue-500 hover:underline'
+																>
+																	View Content
+																</a>
 															)}
 														</div>
 													</div>
-													<div className='col-span-3 text-right font-bold'>
-														{user.points.toFixed(2)}
-														{user.recordCount > 0 && (
+												</div>
+												<div className='text-right'>
+													<div className='font-medium'>
+														+{activity.loyaltyPoints}
+													</div>
+													<div className='text-xs text-gray-500'>
+														{activity.engagement?.engagedTime}s watched
+													</div>
+												</div>
+											</div>
+										))}
+								</div>
+							</CardContent>
+						</Card>
+					)}
+				</TabsContent>
+
+				{/* Enhanced Leaderboard Tab */}
+				<TabsContent value='leaderboard'>
+					<Card>
+						<CardHeader>
+							<div className='flex justify-between items-center'>
+								<CardTitle className='flex items-center gap-2'>
+									<Award className='h-5 w-5 text-amber-500' />
+									{formattedTokenSymbol} Leaderboard
+								</CardTitle>
+								<Select value={timeframe} onValueChange={setTimeframe}>
+									<SelectTrigger className='w-36'>
+										<SelectValue placeholder='Select timeframe' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='daily'>Daily</SelectItem>
+										<SelectItem value='weekly'>Weekly</SelectItem>
+										<SelectItem value='monthly'>Monthly</SelectItem>
+										<SelectItem value='alltime'>All Time</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<CardDescription>
+								Top supporters in the {timeframe} leaderboard for{' '}
+								{selectedCreator?.name}
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							{isLoadingCreator ? (
+								<div className='flex justify-center p-8'>
+									<Loader2 className='h-8 w-8 animate-spin text-primary' />
+								</div>
+							) : leaderboard.length === 0 ? (
+								<div className='text-center py-12'>
+									<Award className='h-12 w-12 text-gray-300 mx-auto mb-4' />
+									<p className='text-lg font-medium text-gray-700'>
+										No leaderboard data yet
+									</p>
+									<p className='text-gray-500'>Be the first to earn points!</p>
+								</div>
+							) : (
+								<>
+									{/* Top 3 Podium Section */}
+									<div className='mb-8'>
+										<div className='flex justify-center items-end gap-4 h-44'>
+											{/* Second Place */}
+											{leaderboard.length > 1 ? (
+												<motion.div
+													initial={{ y: 100, opacity: 0 }}
+													animate={{ y: 0, opacity: 1 }}
+													transition={{
+														delay: 0.2,
+														type: 'spring',
+														stiffness: 100,
+													}}
+													className='flex flex-col items-center'
+												>
+													<div className='mb-2'>
+														<span className='text-2xl'>🥈</span>
+													</div>
+													<Avatar className='h-16 w-16 border-2 border-gray-200'>
+														<AvatarImage
+															src={
+																leaderboard[1].avatarUrl ||
+																`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[1].username}`
+															}
+														/>
+														<AvatarFallback>
+															{leaderboard[1]?.username
+																?.charAt(0)
+																?.toUpperCase() || '2'}
+														</AvatarFallback>
+													</Avatar>
+													<motion.div
+														className='h-24 w-20 bg-gray-100 rounded-t-lg mt-2 flex items-center justify-center'
+														initial={{ height: 0 }}
+														animate={{ height: '6rem' }}
+														transition={{ delay: 0.3, duration: 0.5 }}
+													>
+														<div className='text-center'>
+															<p className='font-medium text-sm'>
+																{leaderboard[1].username}
+															</p>
+															<p className='font-bold text-lg'>
+																{leaderboard[1].points.toFixed(2)}
+															</p>
+														</div>
+													</motion.div>
+												</motion.div>
+											) : (
+												<div className='w-20'></div> // Empty placeholder to maintain layout
+											)}
+
+											{/* First Place */}
+											{leaderboard.length > 0 ? (
+												<motion.div
+													initial={{ y: 100, opacity: 0 }}
+													animate={{ y: 0, opacity: 1 }}
+													transition={{ type: 'spring', stiffness: 100 }}
+													className='flex flex-col items-center'
+												>
+													<div className='mb-2'>
+														<span className='text-2xl'>🥇</span>
+													</div>
+													<Avatar className='h-20 w-20 border-4 border-amber-300'>
+														<AvatarImage
+															src={
+																leaderboard[0].avatarUrl ||
+																`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[0].username}`
+															}
+														/>
+														<AvatarFallback>
+															{leaderboard[0]?.username
+																?.charAt(0)
+																?.toUpperCase() || '1'}
+														</AvatarFallback>
+													</Avatar>
+													<motion.div
+														className='h-32 w-24 bg-amber-50 rounded-t-lg mt-2 flex items-center justify-center'
+														initial={{ height: 0 }}
+														animate={{ height: '8rem' }}
+														transition={{ duration: 0.7 }}
+													>
+														<div className='text-center'>
+															<p className='font-medium'>
+																{leaderboard[0].username}
+															</p>
+															<p className='font-bold text-xl'>
+																{leaderboard[0].points.toFixed(2)}
+															</p>
+														</div>
+													</motion.div>
+												</motion.div>
+											) : (
+												<div className='w-24'></div> // Empty placeholder to maintain layout
+											)}
+
+											{/* Third Place */}
+											{leaderboard.length > 2 ? (
+												<motion.div
+													initial={{ y: 100, opacity: 0 }}
+													animate={{ y: 0, opacity: 1 }}
+													transition={{
+														delay: 0.4,
+														type: 'spring',
+														stiffness: 100,
+													}}
+													className='flex flex-col items-center'
+												>
+													<div className='mb-2'>
+														<span className='text-2xl'>🥉</span>
+													</div>
+													<Avatar className='h-14 w-14 border-2 border-gray-200'>
+														<AvatarImage
+															src={
+																leaderboard[2].avatarUrl ||
+																`https://api.dicebear.com/7.x/initials/svg?seed=${leaderboard[2].username}`
+															}
+														/>
+														<AvatarFallback>
+															{leaderboard[2]?.username
+																?.charAt(0)
+																?.toUpperCase() || '3'}
+														</AvatarFallback>
+													</Avatar>
+													<motion.div
+														className='h-16 w-20 bg-gray-100 rounded-t-lg mt-2 flex items-center justify-center'
+														initial={{ height: 0 }}
+														animate={{ height: '4rem' }}
+														transition={{ delay: 0.5, duration: 0.5 }}
+													>
+														<div className='text-center'>
+															<p className='font-medium text-sm'>
+																{leaderboard[2].username}
+															</p>
+															<p className='font-bold'>
+																{leaderboard[2].points.toFixed(2)}
+															</p>
+														</div>
+													</motion.div>
+												</motion.div>
+											) : (
+												<div className='w-20'></div> // Empty placeholder to maintain layout
+											)}
+										</div>
+									</div>
+
+									{/* Full Leaderboard List */}
+									<div className='rounded-md border mt-8'>
+										<div className='grid grid-cols-12 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-500'>
+											<div className='col-span-1'>#</div>
+											<div className='col-span-7'>User</div>
+											<div className='col-span-3 text-right'>Points</div>
+											<div className='col-span-1'></div>
+										</div>
+
+										{leaderboard.map((user) => (
+											<motion.div
+												key={user.rank}
+												initial={{ opacity: 0, y: 10 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ delay: user.rank * 0.05 }}
+												className={cn(
+													'grid grid-cols-12 py-3 px-4 border-t items-center',
+													user.rank <= 3 ? 'bg-amber-50/50' : ''
+												)}
+											>
+												<div className='col-span-1 font-medium flex items-center'>
+													{user.rank <= 3 ? (
+														<span className='mr-1'>
+															{user.rank === 1 && '🥇'}
+															{user.rank === 2 && '🥈'}
+															{user.rank === 3 && '🥉'}
+														</span>
+													) : (
+														user.rank
+													)}
+												</div>
+												<div className='col-span-7 flex items-center gap-3'>
+													<Avatar className='h-8 w-8'>
+														<AvatarImage
+															src={
+																user.avatarUrl ||
+																`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`
+															}
+														/>
+														<AvatarFallback>
+															{user?.username?.charAt(0)?.toUpperCase() || '?'}
+														</AvatarFallback>
+													</Avatar>
+													<div>
+														<div className='font-medium'>@{user.username}</div>
+														{user.name && (
 															<div className='text-xs text-gray-500'>
-																{user.recordCount} activities
+																{user.name}
 															</div>
 														)}
 													</div>
-													<div className='col-span-1 flex justify-end'>
-														{user.change === 'up' && (
-															<motion.div
-																initial={{ y: 3 }}
-																animate={{ y: -3 }}
-																transition={{
-																	repeat: Infinity,
-																	repeatType: 'reverse',
-																	duration: 0.8,
-																}}
-															>
-																<ArrowUp className='h-4 w-4 text-green-500' />
-															</motion.div>
-														)}
-														{user.change === 'down' && (
-															<motion.div
-																initial={{ y: -3 }}
-																animate={{ y: 3 }}
-																transition={{
-																	repeat: Infinity,
-																	repeatType: 'reverse',
-																	duration: 0.8,
-																}}
-															>
-																<ArrowDown className='h-4 w-4 text-red-500' />
-															</motion.div>
-														)}
-													</div>
-												</motion.div>
-											))}
-										</div>
-									</>
-								)}
-
-								{leaderboard.length > 0 && (
-									<div className='mt-6 flex justify-center'>
-										<Button
-											variant='outline'
-											className='gap-2'
-											onClick={() =>
-												router.push(
-													`/creators/${selectedCreator._id}/leaderboard?timeframe=${timeframe}`
-												)
-											}
-										>
-											<Users className='h-4 w-4' />
-											View Full Leaderboard
-										</Button>
+												</div>
+												<div className='col-span-3 text-right font-bold'>
+													{user.points.toFixed(2)}
+													{user.recordCount > 0 && (
+														<div className='text-xs text-gray-500'>
+															{user.recordCount} activities
+														</div>
+													)}
+												</div>
+												<div className='col-span-1 flex justify-end'>
+													{user.change === 'up' && (
+														<motion.div
+															initial={{ y: 3 }}
+															animate={{ y: -3 }}
+															transition={{
+																repeat: Infinity,
+																repeatType: 'reverse',
+																duration: 0.8,
+															}}
+														>
+															<ArrowUp className='h-4 w-4 text-green-500' />
+														</motion.div>
+													)}
+													{user.change === 'down' && (
+														<motion.div
+															initial={{ y: -3 }}
+															animate={{ y: 3 }}
+															transition={{
+																repeat: Infinity,
+																repeatType: 'reverse',
+																duration: 0.8,
+															}}
+														>
+															<ArrowDown className='h-4 w-4 text-red-500' />
+														</motion.div>
+													)}
+												</div>
+											</motion.div>
+										))}
 									</div>
-								)}
-							</CardContent>
-						</Card>
-					</TabsContent>
+								</>
+							)}
 
-					{/* Rewards Tab */}
-					<TabsContent value='rewards'>
-						<Card>
-							<CardHeader>
-								<CardTitle>Loyalty Rewards</CardTitle>
-								<CardDescription>
-									Ways to earn more {formattedTokenSymbol} tokens from{' '}
-									{selectedCreator.name}
-								</CardDescription>
-							</CardHeader>
-							<CardContent className='text-center py-12'>
-								<div className='mb-6'>
-									<div className='bg-gray-100 p-8 inline-block rounded-full'>
-										<Coins className='h-12 w-12 text-gray-400' />
-									</div>
+							{leaderboard.length > 0 && selectedCreator && (
+								<div className='mt-6 flex justify-center'>
+									<Button
+										variant='outline'
+										className='gap-2'
+										onClick={() =>
+											router.push(
+												`/creators/${selectedCreator._id}/leaderboard?timeframe=${timeframe}`
+											)
+										}
+									>
+										<Users className='h-4 w-4' />
+										View Full Leaderboard
+									</Button>
 								</div>
-								<h3 className='text-2xl font-semibold mb-2'>
-									Rewards Coming Soon
-								</h3>
-								<p className='text-gray-500 max-w-md mx-auto'>
-									We're working on exciting new ways for you to earn rewards
-									from {selectedCreator.name}. Check back soon for updates!
-								</p>
-							</CardContent>
-						</Card>
-					</TabsContent>
-				</Tabs>
-			)}
+							)}
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				{/* Rewards Tab */}
+				<TabsContent value='rewards'>
+					<Card>
+						<CardHeader>
+							<CardTitle>Loyalty Rewards</CardTitle>
+							<CardDescription>
+								Ways to earn more {formattedTokenSymbol} tokens from{' '}
+								{selectedCreator?.name}
+							</CardDescription>
+						</CardHeader>
+						<CardContent className='text-center py-12'>
+							<div className='mb-6'>
+								<div className='bg-gray-100 p-8 inline-block rounded-full'>
+									<Coins className='h-12 w-12 text-gray-400' />
+								</div>
+							</div>
+							<h3 className='text-2xl font-semibold mb-2'>
+								Rewards Coming Soon
+							</h3>
+							<p className='text-gray-500 max-w-md mx-auto'>
+								We're working on exciting new ways for you to earn rewards from{' '}
+								{selectedCreator?.name}. Check back soon for updates!
+							</p>
+						</CardContent>
+					</Card>
+				</TabsContent>
+			</Tabs>
 
 			{/* QR Code Dialog */}
 			<Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
