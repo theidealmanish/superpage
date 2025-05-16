@@ -147,7 +147,9 @@ export const NavContent = () => {
 								</Avatar>
 
 								<div className='ml-3 hidden lg:block'>
-									<p className='font-medium text-sm'>{userProfile?.user?.name}</p>
+									<p className='font-medium text-sm'>
+										{userProfile?.user?.name}
+									</p>
 									<p className='text-gray-500 text-sm'>
 										@{userProfile?.user?.username}
 									</p>
@@ -173,18 +175,6 @@ export const NavContent = () => {
 								<DropdownMenuItem onClick={() => router.push('/profile')}>
 									<User className='mr-2 h-4 w-4' />
 									<span>Profile</span>
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => router.push('/settings')}>
-									<div className='mr-2 h-4 w-4 flex items-center justify-center'>
-										⚙️
-									</div>
-									<span>Settings</span>
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => router.push('/wallet')}>
-									<div className='mr-2 h-4 w-4 flex items-center justify-center'>
-										💰
-									</div>
-									<span>Wallet</span>
 								</DropdownMenuItem>
 							</DropdownMenuGroup>
 							<DropdownMenuSeparator />

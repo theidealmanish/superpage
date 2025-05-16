@@ -522,7 +522,7 @@ export default function LoyaltiesPage() {
 											<img
 												src={selectedCreator.token.imageUrl}
 												alt={selectedCreator.token.name}
-												className='h-12 w-12 rounded-full'
+												className='h-12 w-12 rounded-full object-cover'
 											/>
 										) : (
 											<div className='h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center'>
@@ -579,21 +579,6 @@ export default function LoyaltiesPage() {
 										</div>
 									</div>
 								)}
-
-								<div className='pt-2'>
-									<Button
-										variant='outline'
-										className='w-full'
-										onClick={() => {
-											if (selectedCreator?.token?._id) {
-												router.push(`/tokens/${selectedCreator.token._id}`);
-											}
-										}}
-										disabled={!selectedCreator?.token?._id}
-									>
-										View Token Details
-									</Button>
-								</div>
 							</CardContent>
 						</Card>
 					</div>

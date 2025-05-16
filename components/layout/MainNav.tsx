@@ -12,7 +12,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, LogOut, User } from 'lucide-react';
+import { ChevronDown, Home, LogOut, User } from 'lucide-react';
 import axios from '@/lib/axios';
 import Image from 'next/image';
 
@@ -145,7 +145,11 @@ const MainNav: React.FC<MainNavProps> = ({ className }) => {
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align='end' className='w-56'>
-								<Link href={`/@${user.username}`}>
+								<Link href={`/home`}>
+									<DropdownMenuItem className='cursor-pointer'>
+										<Home className='mr-2 h-4 w-4' />
+										<span>Home</span>
+									</DropdownMenuItem>
 									<DropdownMenuItem className='cursor-pointer'>
 										<User className='mr-2 h-4 w-4' />
 										<span>My Profile</span>

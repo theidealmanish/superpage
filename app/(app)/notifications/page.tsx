@@ -27,7 +27,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 
 // Define notification types based on the MongoDB schemas
 interface Notification {
@@ -93,7 +92,7 @@ export default function NotificationsPage() {
 	// Mark a notification as read
 	const markAsRead = async (notificationId: string) => {
 		try {
-			await axios.patch(`/notifications/${notificationId}/read`);
+			await axios.patch(`/notifications/mark-all-as-seen`);
 			setNotifications(
 				notifications.map((notification) =>
 					notification._id === notificationId
@@ -110,7 +109,7 @@ export default function NotificationsPage() {
 	const markAllAsRead = async () => {
 		try {
 			setIsMarkingAllRead(true);
-			await axios.patch('/notifications/read-all');
+			await axios.patch('/notifications/mark-all-as-seen');
 			setNotifications(
 				notifications.map((notification) => ({ ...notification, isSeen: true }))
 			);
@@ -381,7 +380,7 @@ export default function NotificationsPage() {
 									</p>
 								</div>
 							) : (
-								<div className='space-y-1'>
+								<div className='space-y-2'>
 									{/* Same rendering logic as the "all" tab */}
 									{filteredNotifications.map((notification, index) => (
 										<div key={notification._id}>
@@ -416,11 +415,7 @@ export default function NotificationsPage() {
 												</div>
 
 												<ChevronRight className='h-5 w-5 text-gray-400 shrink-0' />
-											</div>
-
-											{index < filteredNotifications.length - 1 && (
-												<Separator className='my-1' />
-											)}
+											</div>{' '}
 										</div>
 									))}
 								</div>
@@ -462,7 +457,7 @@ export default function NotificationsPage() {
 									</p>
 								</div>
 							) : (
-								<div className='space-y-1'>
+								<div className='space-y-2'>
 									{filteredNotifications.map((notification, index) => (
 										<div key={notification._id}>
 											{/* Same notification item structure */}
@@ -497,10 +492,6 @@ export default function NotificationsPage() {
 
 												<ChevronRight className='h-5 w-5 text-gray-400 shrink-0' />
 											</div>
-
-											{index < filteredNotifications.length - 1 && (
-												<Separator className='my-1' />
-											)}
 										</div>
 									))}
 								</div>
@@ -541,7 +532,7 @@ export default function NotificationsPage() {
 									</p>
 								</div>
 							) : (
-								<div className='space-y-1'>
+								<div className='space-y-2'>
 									{filteredNotifications.map((notification, index) => (
 										<div key={notification._id}>
 											{/* Same notification item structure */}
@@ -574,10 +565,6 @@ export default function NotificationsPage() {
 
 												<ChevronRight className='h-5 w-5 text-gray-400 shrink-0' />
 											</div>
-
-											{index < filteredNotifications.length - 1 && (
-												<Separator className='my-1' />
-											)}
 										</div>
 									))}
 								</div>
