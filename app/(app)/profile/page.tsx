@@ -293,9 +293,13 @@ export default function ProfilePage() {
 								<AvatarImage src={avatarUrl} alt={user?.name || 'User'} />
 							) : (
 								<AvatarImage
-									src={`https://api.dicebear.com/7.x/initials/svg?seed=${
-										user?.name || 'User'
-									}`}
+									src={
+										user.photo
+											? user.photo
+											: `https://api.dicebear.com/7.x/initials/svg?seed=${
+													user?.name || 'User'
+											  }`
+									}
 								/>
 							)}
 							<AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>

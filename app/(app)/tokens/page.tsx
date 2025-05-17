@@ -58,6 +58,8 @@ import {
 } from '@/components/ui/form';
 import Loading from '@/components/Loading';
 import formatTokenAmount from '@/lib/formatNumberToString';
+import uploadImage from '@/lib/uploadImage';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 // Token type definition
 interface Token {
@@ -96,6 +98,8 @@ export default function TokensPage() {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [activeFilter, setActiveFilter] = useState('all');
 	const [isCreating, setIsCreating] = useState(false);
+	const [imagePreview, setImagePreview] = useState<string | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
 	const router = useRouter();
 
 	const form = useForm<z.infer<typeof tokenFormSchema>>({
@@ -131,6 +135,7 @@ export default function TokensPage() {
 
 	const onSubmit = async (values: z.infer<typeof tokenFormSchema>) => {
 		try {
+			setIsCreating(true);
 			const response = await axios.post('/tokens', values);
 			setTokens([...tokens, response.data.data]);
 			toast.success('Token created successfully');
@@ -140,11 +145,6 @@ export default function TokensPage() {
 			console.error('Error creating token:', error);
 			toast.error('Failed to create token');
 		}
-	};
-
-	const copyToClipboard = (text: string) => {
-		navigator.clipboard.writeText(text);
-		toast.success('Copied to clipboard');
 	};
 
 	const truncateAddress = (address: string) => {
@@ -192,6 +192,37 @@ export default function TokensPage() {
 		}
 		return matchesSearch;
 	});
+
+	const handleImageUpload = async (
+		event: React.ChangeEvent<HTMLInputElement>
+	) => {
+		if (event.target.files && event.target.files[0]) {
+			const file = event.target.files[0];
+
+			// First show preview immediately
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				if (e.target?.result) {
+					setImagePreview(e.target.result as string);
+				}
+			};
+			reader.readAsDataURL(file);
+
+			// Then upload to cloudinary
+			setIsUploading(true);
+			try {
+				const data = await uploadImage(file);
+				// Set the secure URL from cloudinary to the form
+				form.setValue('imageUrl', data.secure_url);
+				toast.success('Token logo uploaded successfully');
+			} catch (error) {
+				console.error('Error uploading image:', error);
+				toast.error('Failed to upload token logo');
+			} finally {
+				setIsUploading(false);
+			}
+		}
+	};
 
 	if (isLoading) {
 		return <Loading />;
@@ -318,12 +349,77 @@ export default function TokensPage() {
 										name='imageUrl'
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Logo URL</FormLabel>
+												<FormLabel>Token Logo</FormLabel>
 												<FormControl>
-													<Input
-														placeholder='https://example.com/logo.png'
-														{...field}
-													/>
+													<div className='space-y-3'>
+														{/* Image preview */}
+														{(imagePreview || field.value) && (
+															<div className='flex items-center gap-2'>
+																<Avatar className='h-16 w-16 rounded-md'>
+																	<AvatarImage
+																		src={imagePreview || field.value}
+																		alt='Token logo preview'
+																		className='object-cover'
+																	/>
+																	<AvatarFallback className='rounded-md bg-primary/10 text-lg'>
+																		{form
+																			.watch('symbol')
+																			.substring(0, 2)
+																			.toUpperCase() || 'TK'}
+																	</AvatarFallback>
+																</Avatar>
+
+																<Button
+																	type='button'
+																	variant='destructive'
+																	size='sm'
+																	onClick={() => {
+																		field.onChange('');
+																		setImagePreview(null);
+																	}}
+																>
+																	<X size={16} className='mr-1' /> Remove
+																</Button>
+															</div>
+														)}
+
+														{/* File input and URL option */}
+														<div className='flex gap-2'>
+															<div className='relative flex-1'>
+																<Input
+																	type='file'
+																	accept='image/*'
+																	onChange={handleImageUpload}
+																	disabled={isUploading}
+																	className='cursor-pointer'
+																/>
+																{isUploading && (
+																	<div className='absolute right-2 top-1/2 transform -translate-y-1/2'>
+																		<div className='animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full'></div>
+																	</div>
+																)}
+															</div>
+
+															<Button
+																type='button'
+																variant='outline'
+																onClick={() => {
+																	const url = prompt('Or enter an image URL:');
+																	if (url) {
+																		field.onChange(url);
+																		setImagePreview(url);
+																	}
+																}}
+																disabled={isUploading}
+															>
+																Use URL
+															</Button>
+														</div>
+														<p className='text-xs text-muted-foreground'>
+															Upload a logo for your token (recommended:
+															256×256px)
+														</p>
+													</div>
 												</FormControl>
 												<FormMessage />
 											</FormItem>
@@ -496,7 +592,14 @@ export default function TokensPage() {
 													Contract Address
 												</div>
 												<p className='text-sm line-clamp-2'>
-													{token.contractAddress}
+													<a
+														href={`https://solscan.io/token/${token.contractAddress}?cluster=devnet`}
+														target='_blank'
+														rel='noopener noreferrer'
+														className='text-blue-500 hover:underline'
+													>
+														{truncateAddress(token.contractAddress)}
+													</a>
 												</p>
 											</div>
 										</div>

@@ -114,27 +114,23 @@ export default function ListingDetailPage() {
 	const handlePurchase = async () => {
 		if (!listing) return;
 
+		// Set loading state BEFORE making the API call
 		setIsPurchasing(true);
 
 		try {
-			// In a real app, you'd make an API call to process the purchase
-			axios
-				.post(`/tokens/claim`, {
-					tokenAddress: 'bAmtmPSAzQywiQ5Nor6CskV3oD9DmEmHtAZHxADywNH',
-					recipientAddress: 'F2qa5Qd2iRM9B28dhzx3g9RuvSxoAJs7BPC4KSj6FjHV',
-					priceWithToken: listing.priceWithToken,
-				})
-				.then((response) => {
-					console.log(response);
-					setTxID(response.data.data.transactionId);
-					toast.success(
-						'Purchase successful! Transaction ID: ' +
-							response.data.data.transactionId
-					);
-				})
-				.catch(() => {
-					toast.error('Failed to process purchase. Please try again.');
-				});
+			// Make the API call
+			const response = await axios.post(`/tokens/claim`, {
+				tokenAddress: 'bAmtmPSAzQywiQ5Nor6CskV3oD9DmEmHtAZHxADywNH',
+				recipientAddress: 'F2qa5Qd2iRM9B28dhzx3g9RuvSxoAJs7BPC4KSj6FjHV',
+				priceWithToken: listing.priceWithToken,
+			});
+
+			console.log(response);
+			setTxID(response.data.data.transactionId);
+			toast.success(
+				'Purchase successful! Transaction ID: ' +
+					response.data.data.transactionId
+			);
 
 			// If this is a limited item, update the quantity
 			if (listing.isLimited && listing.quantity) {
@@ -147,7 +143,11 @@ export default function ListingDetailPage() {
 			console.error('Error processing purchase:', error);
 			toast.error('Failed to process purchase. Please try again.');
 		} finally {
-			setIsPurchasing(false);
+			// Only set isPurchasing to false if there was an error
+			// If transaction was successful, keep button disabled
+			if (!txId) {
+				setIsPurchasing(false);
+			}
 		}
 	};
 
@@ -403,8 +403,16 @@ export default function ListingDetailPage() {
 						>
 							Cancel
 						</Button>
-						<Button onClick={handlePurchase} disabled={isPurchasing}>
-							{isPurchasing ? 'Processing...' : 'Complete Purchase'}
+
+						<Button
+							onClick={handlePurchase}
+							disabled={isPurchasing || txId !== null}
+						>
+							{isPurchasing
+								? 'Processing...'
+								: txId
+								? 'Purchase Complete'
+								: 'Complete Purchase'}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

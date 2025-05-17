@@ -33,12 +33,12 @@ import {
 
 const navigation = [
 	{ name: 'Home', icon: Home, href: '/home' },
-	{ name: 'Explore', icon: Compass, href: '/explore' },
-	{ name: 'Marketplace', icon: Store, href: '/marketplace' },
-	{ name: 'Notifications', icon: Bell, href: '/notifications' },
-	{ name: 'Bounties', icon: Globe, href: '/bounties' },
+	// { name: 'Explore', icon: Compass, href: '/explore' },
 	{ name: 'Tokens', icon: Coins, href: '/tokens' },
 	{ name: 'Loyalties', icon: Trophy, href: '/loyalties' },
+	{ name: 'Notifications', icon: Bell, href: '/notifications' },
+	{ name: 'Marketplace', icon: Store, href: '/marketplace' },
+	// { name: 'Bounties', icon: Globe, href: '/bounties' },
 	{ name: 'Profile', icon: User, href: '/profile' },
 ];
 

@@ -191,7 +191,7 @@ export default function ProfilePage() {
 				setError(null);
 			} catch (err) {
 				console.error('Error fetching profile:', err);
-				toast.error('Failed to load profile');
+				toast.error('No profile found, Please create one.');
 			} finally {
 				setIsLoading(false);
 			}
@@ -207,14 +207,26 @@ export default function ProfilePage() {
 		try {
 			const response = await axios.post('/profile', values);
 			console.log('Profile updated:', response.data);
-			setProfile(response.data);
-			setError(null);
+
+			// Update the profile state with the response data
+			// Make sure to get the correct data path based on your API response
+			const updatedProfile = response.data.data || response.data;
+			setProfile(updatedProfile);
+
+			// Show success message
+			toast.success('Profile updated successfully');
+
+			// Close edit mode
 			setIsEditing(false);
+			setError(null);
 		} catch (err) {
 			console.error('Failed to update profile:', err);
 			setError('Failed to update profile. Please try again.');
+			toast.error('Failed to update profile. Please try again.');
 		} finally {
 			setIsSaving(false);
+			// Remove the redirect to keep user on the profile page
+			// router.push('/home');
 		}
 	};
 
@@ -225,14 +237,13 @@ export default function ProfilePage() {
 					<Avatar className='h-16 w-16 sm:h-20 sm:w-20'>
 						<AvatarImage
 							src={
-								user.photo != null || user.photo
+								user?.photo && user?.photo !== ''
 									? user.photo
 									: `https://api.dicebear.com/7.x/initials/svg?seed=${
 											user?.name || 'User'
 									  }`
 							}
 						/>
-						<AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
 					</Avatar>
 
 					<div>
