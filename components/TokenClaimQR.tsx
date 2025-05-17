@@ -78,7 +78,7 @@ export default function TokenClaimQR({
 
 		try {
 			setIsLoading(true);
-			const response = await axios.post('/token/claim', {
+			const response = await axios.post('/tokens/claim', {
 				tokenId,
 				recipientAddress: walletAddress,
 			});

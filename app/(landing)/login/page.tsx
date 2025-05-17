@@ -65,7 +65,7 @@ export default function SignInPage() {
 				toast.success('Login successful!');
 				// Store the token in local storage or context
 				localStorage.setItem('token', response.token);
-				router.push(`/${response.user.username}`);
+				router.push(`/home`);
 			})
 			.catch((error) => {
 				// Handle login error
@@ -216,7 +216,7 @@ export default function SignInPage() {
 					<p className='text-sm text-gray-600'>
 						Don't have an account?{' '}
 						<Link
-							href='/sign-up'
+							href='/register'
 							className='text-primary font-medium hover:underline'
 						>
 							Sign up

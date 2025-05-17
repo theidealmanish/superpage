@@ -46,16 +46,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Loading from '@/components/Loading';
 import formatTokenAmount from '@/lib/formatNumberToString';
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-} from '@/components/ui/dialog';
-import TokenClaimQR from '@/components/TokenClaimQR';
 import { motion } from 'framer-motion';
-import { Medal } from 'lucide-react'; // Add Medal icon
 import { cn } from '@/lib/utils';
 
 // Types
@@ -75,6 +66,7 @@ interface Creator {
 		circulatingSupply?: number;
 		decimals?: number;
 		description?: string;
+		contractAddress: string;
 	};
 }
 
@@ -111,6 +103,7 @@ interface LoyaltyStatsResponse {
 		tokenImage?: string;
 		tokenSupply?: number;
 		tokenDescription?: string;
+		tokenAddress?: string;
 	}>;
 	overall: {
 		totalPoints: number;
@@ -158,13 +151,13 @@ export default function LoyaltiesPage() {
 	const [userTokenInfo, setUserTokenInfo] = useState<UserTokenInfo | null>(
 		null
 	);
+	const [tokenClaimed, setTokenClaimed] = useState('0');
+	const [claimTxId, setClaimTxId] = useState<string | null>(null);
+	const [isClaiming, setIsClaiming] = useState(false);
+	const [isClaimingQR, setIsClaimingQR] = useState(false);
 	const [isLoadingCreator, setIsLoadingCreator] = useState(false);
 	const [isLoadingStats, setIsLoadingStats] = useState(true);
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
-	const [showClaimModal, setShowClaimModal] = useState(false);
-	const [qrRef, setQrRef] = useState<HTMLDivElement | null>(null);
-	const [isClaiming, setIsClaiming] = useState(false);
-	const [claimTxId, setClaimTxId] = useState<string | null>(null);
 	const [recentActivity, setRecentActivity] = useState<
 		LoyaltyStatsResponse['recentActivity']
 	>([]);
@@ -196,9 +189,9 @@ export default function LoyaltiesPage() {
 
 			if (response.data && response.data.status === 'success') {
 				const stats: LoyaltyStatsResponse = response.data.data;
-
+				console.log('LoyaltyStatsResponse:', stats);
 				// Map the creators from the stats to our Creator interface
-				const mappedCreators: Creator[] = stats.creators.map((creator) => ({
+				const mappedCreators: any = stats.creators.map((creator) => ({
 					_id: creator.creatorId,
 					name: creator.creatorName,
 					username: creator.creatorUsername,
@@ -213,11 +206,13 @@ export default function LoyaltiesPage() {
 								imageUrl: creator.tokenImage,
 								totalSupply: creator.tokenSupply,
 								description: creator.tokenDescription,
+								contractAddress: creator.tokenAddress,
 						  }
 						: undefined,
 				}));
 
 				setCreators(mappedCreators);
+				console.log(creators);
 				setRecentActivity(stats.recentActivity);
 
 				// Select the first creator by default
@@ -336,6 +331,30 @@ export default function LoyaltiesPage() {
 		);
 	}
 
+	// handle the token claim
+	const claimToken = async () => {
+		setIsClaiming(true);
+		console.log('Claiming token for user:', userProfile?.wallets?.solana);
+		console.log('Selected creator:', selectedCreator?.token?._id);
+		try {
+			const response = await axios.post('/tokens/claim', {
+				tokenId: selectedCreator?.token?._id,
+				recipientAddress: userProfile?.wallets?.solana,
+			});
+			if (response.data && response.data.status === 'success') {
+				setClaimTxId(response.data.data.transactionId);
+				toast.success('Token claimed successfully!');
+			} else {
+				toast.error('Failed to claim token');
+			}
+		} catch (error) {
+			console.error('Error claiming token:', error);
+			toast.error('Failed to claim token');
+		} finally {
+			setIsClaiming(false);
+		}
+	};
+
 	// Main loading state - shows only once during initial load
 	if (isLoading) {
 		return <Loading />;
@@ -448,6 +467,10 @@ export default function LoyaltiesPage() {
 											</span>
 										</div>
 										<div className='flex justify-between text-sm'>
+											<span className='text-gray-500'>Token Claimed</span>
+											<span className='font-medium '>{tokenClaimed || 0}</span>
+										</div>
+										<div className='flex justify-between text-sm'>
 											<span className='text-gray-500'>
 												Token Value (Not listed yet)
 											</span>
@@ -460,46 +483,58 @@ export default function LoyaltiesPage() {
 											</span>
 										</div>
 									</div>
-
-									<div>
-										<div className='flex justify-between mb-1'>
-											<span className='text-sm text-gray-500'>
-												Your Position
-											</span>
-											<span className='text-sm font-medium'>
-												Top {100 - (userTokenInfo?.percentile || 0)}%
-											</span>
-										</div>
-										<Progress
-											value={userTokenInfo?.percentile || 0}
-											className='h-2'
-										/>
-									</div>
 								</div>
 							</CardContent>
 							<CardFooter>
-								{selectedCreator?.token?._id ? (
-									<TokenClaimQR
-										tokenId={selectedCreator.token._id}
-										tokenName={selectedCreator.token.name || 'Token'}
-										tokenSymbol={formattedTokenSymbol}
-										amount={
-											Math.round(
-												(selectedCreator.earnedPoints || 0) * 0.01 * 100
-											) / 100
-										}
-										recipientAddress={userProfile?.wallets?.solana || ''}
-									/>
-								) : (
-									<Button
-										variant='outline'
-										className='w-full'
-										disabled
-										onClick={() => setShowClaimModal(true)}
-									>
-										Token Not Available
-									</Button>
+								{claimTxId && (
+									<div className='flex items-center gap-2'>
+										<Check className='h-5 w-5 text-green-500' />
+										<a
+											href={`https://solscan.io/tx/${claimTxId}?cluster=devnet`}
+											target='_blank'
+											rel='noopener noreferrer'
+											className='text-green-500 hover:underline truncate flex-1 font-mono text-sm'
+										>
+											Token claimed successfully!
+											<span className='inline-block ml-2'>
+												<svg
+													xmlns='http://www.w3.org/2000/svg'
+													width='14'
+													height='14'
+													viewBox='0 0 24 24'
+													fill='none'
+													stroke='currentColor'
+													strokeWidth='2'
+													strokeLinecap='round'
+													strokeLinejoin='round'
+												>
+													<path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'></path>
+													<polyline points='15 3 21 3 21 9'></polyline>
+													<line x1='10' y1='14' x2='21' y2='3'></line>
+												</svg>
+											</span>
+										</a>
+									</div>
 								)}
+
+								<div className='flex flex-col'>
+									{selectedCreator?.token?._id ? (
+										<Button disabled={isClaiming} onClick={claimToken}>
+											{isClaiming ? 'Claiming' : 'Claim Tokens'}
+										</Button>
+									) : (
+										<Button
+											variant='outline'
+											className='w-full'
+											disabled
+											onClick={() => {
+												toast.error('Token not available for this creator');
+											}}
+										>
+											Token Not Available
+										</Button>
+									)}
+								</div>
 							</CardFooter>
 						</Card>
 
@@ -516,6 +551,42 @@ export default function LoyaltiesPage() {
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='space-y-4'>
+								<div className='grid grid-cols-1 gap-4 mb-4'>
+									<div className='bg-gray-50 p-4 rounded-lg flex items-center space-x-4'>
+										<span className='text-gray-500 mr-1'>CA:</span>
+										{selectedCreator?.token?.contractAddress ? (
+											<a
+												href={`https://solscan.io/token/${selectedCreator.token.contractAddress}?cluster=devnet`}
+												target='_blank'
+												rel='noopener noreferrer'
+												className='text-blue-600 hover:text-blue-800 hover:underline truncate flex-1 font-mono text-sm'
+											>
+												{selectedCreator.token.contractAddress}
+												<span className='inline-block ml-2'>
+													<svg
+														xmlns='http://www.w3.org/2000/svg'
+														width='14'
+														height='14'
+														viewBox='0 0 24 24'
+														fill='none'
+														stroke='currentColor'
+														strokeWidth='2'
+														strokeLinecap='round'
+														strokeLinejoin='round'
+													>
+														<path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'></path>
+														<polyline points='15 3 21 3 21 9'></polyline>
+														<line x1='10' y1='14' x2='21' y2='3'></line>
+													</svg>
+												</span>
+											</a>
+										) : (
+											<span className='text-gray-400 italic'>
+												Not available
+											</span>
+										)}
+									</div>
+								</div>
 								<div className='grid grid-cols-1 gap-4 mb-4'>
 									<div className='bg-gray-50 p-4 rounded-lg flex items-center space-x-4'>
 										{selectedCreator?.token?.imageUrl ? (
@@ -974,74 +1045,6 @@ export default function LoyaltiesPage() {
 					</Card>
 				</TabsContent>
 			</Tabs>
-
-			{/* QR Code Dialog */}
-			<Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
-				<DialogContent className='sm:max-w-[425px]'>
-					<DialogHeader>
-						<DialogTitle>Claim {formattedTokenSymbol} Tokens</DialogTitle>
-						<DialogDescription>
-							Scan this QR code with your wallet to claim your tokens
-						</DialogDescription>
-					</DialogHeader>
-
-					<div className='flex flex-col items-center justify-center py-4'>
-						{claimTxId ? (
-							<div className='text-center space-y-4'>
-								<div className='bg-green-100 rounded-full p-3 inline-flex'>
-									<Check className='h-6 w-6 text-green-600' />
-								</div>
-								<p className='font-medium'>Tokens claimed successfully!</p>
-								<p className='text-sm text-gray-500'>
-									Your tokens have been transferred to your wallet.
-								</p>
-								<Button
-									className='w-full'
-									onClick={() => {
-										setClaimTxId(null);
-										setShowClaimModal(false);
-									}}
-								>
-									Close
-								</Button>
-							</div>
-						) : (
-							<>
-								<div
-									ref={setQrRef}
-									className='qr-container bg-white p-4 rounded-lg mb-4 relative min-h-[300px] min-w-[300px] flex items-center justify-center'
-								>
-									{/* QR code will be rendered here */}
-									{isClaiming && (
-										<div className='absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg'>
-											<Loader2 className='h-8 w-8 animate-spin text-primary' />
-										</div>
-									)}
-								</div>
-
-								<div className='text-sm text-gray-500 text-center mb-4'>
-									<p>Scan with your wallet to claim</p>
-									<p className='mt-1 font-medium'>
-										{Math.round(
-											(selectedCreator?.earnedPoints || 0) * 0.01 * 100
-										) / 100}{' '}
-										{formattedTokenSymbol}
-									</p>
-									<p className='mt-2'>Wallet: {getWalletAddress()}</p>
-								</div>
-
-								<Button
-									variant='outline'
-									className='w-full'
-									onClick={() => setShowClaimModal(false)}
-								>
-									Cancel
-								</Button>
-							</>
-						)}
-					</div>
-				</DialogContent>
-			</Dialog>
 		</div>
 	);
 }

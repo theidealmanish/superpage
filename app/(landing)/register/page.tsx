@@ -17,6 +17,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import uploadImage from '@/lib/uploadImage';
 import {
 	Form,
 	FormControl,
@@ -49,7 +50,7 @@ const signUpSchema = z.object({
 		.string()
 		.min(8, { message: 'Password must be at least 8 characters' })
 		.max(100, { message: 'Password must be less than 100 characters' }),
-	avatar: z.string().optional().default(''),
+	photo: z.string().optional().default(''),
 });
 
 export default function SignUpPage() {
@@ -59,6 +60,7 @@ export default function SignUpPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [isUploading, setIsUploading] = useState(false);
 
 	const form = useForm<z.infer<typeof signUpSchema>>({
 		resolver: zodResolver(signUpSchema),
@@ -67,24 +69,39 @@ export default function SignUpPage() {
 			username: '',
 			email: '',
 			password: '',
-			avatar: '',
+			photo: '',
 		},
 	});
 
-	// Handle avatar upload
-	const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+	// Handle avatar upload using the cloudinary service
+	const handleAvatarChange = async (
+		event: React.ChangeEvent<HTMLInputElement>
+	) => {
 		if (event.target.files && event.target.files[0]) {
 			const file = event.target.files[0];
-			const reader = new FileReader();
 
+			// First show preview immediately
+			const reader = new FileReader();
 			reader.onload = (e) => {
 				if (e.target?.result) {
 					setAvatarPreview(e.target.result as string);
-					form.setValue('avatar', e.target.result as string);
 				}
 			};
-
 			reader.readAsDataURL(file);
+
+			// Then upload to cloudinary
+			setIsUploading(true);
+			try {
+				const data = await uploadImage(file);
+				// Set the secure URL from cloudinary to the form
+				form.setValue('photo', data.secure_url);
+				toast.success('Profile picture uploaded successfully');
+			} catch (error) {
+				console.error('Error uploading image:', error);
+				toast.error('Failed to upload profile picture');
+			} finally {
+				setIsUploading(false);
+			}
 		}
 	};
 
@@ -101,6 +118,7 @@ export default function SignUpPage() {
 			username: values.username,
 			email: values.email,
 			password: values.password,
+			photo: values.photo,
 		})
 			.then((res) => {
 				console.log(res.data);
@@ -154,17 +172,24 @@ export default function SignUpPage() {
 							<FormItem className='flex flex-col items-center justify-center'>
 								<FormLabel>Profile Picture</FormLabel>
 								<div
-									className='w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer overflow-hidden'
+									className='w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer overflow-hidden relative'
 									onClick={triggerFileInput}
 								>
 									{avatarPreview ? (
-										<Image
-											src={avatarPreview}
-											alt='Avatar preview'
-											width={96}
-											height={96}
-											className='w-full h-full object-cover'
-										/>
+										<>
+											<Image
+												src={avatarPreview}
+												alt='Avatar preview'
+												width={96}
+												height={96}
+												className='w-full h-full object-cover'
+											/>
+											{isUploading && (
+												<div className='absolute inset-0 bg-black/30 flex items-center justify-center'>
+													<Loader2 className='h-8 w-8 text-white animate-spin' />
+												</div>
+											)}
+										</>
 									) : (
 										<Upload className='w-8 h-8 text-gray-400' />
 									)}
@@ -175,10 +200,12 @@ export default function SignUpPage() {
 									onChange={handleAvatarChange}
 									accept='image/*'
 									className='hidden'
-									disabled={isLoading}
+									disabled={isLoading || isUploading}
 								/>
 								<FormDescription className='text-xs text-center'>
-									Click to upload a profile picture (optional)
+									{isUploading
+										? 'Uploading...'
+										: 'Click to upload a profile picture (optional)'}
 								</FormDescription>
 							</FormItem>
 
@@ -277,7 +304,11 @@ export default function SignUpPage() {
 								)}
 							/>
 
-							<Button type='submit' className='w-full' disabled={isLoading}>
+							<Button
+								type='submit'
+								disabled={isLoading && !isUploading}
+								className='w-full'
+							>
 								{isLoading ? (
 									<span className='flex items-center'>
 										<Loader2 className='mr-2 h-4 w-4 animate-spin' />

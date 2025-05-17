@@ -224,9 +224,13 @@ export default function ProfilePage() {
 				<div className='flex flex-col sm:flex-row sm:items-center gap-4 mb-8'>
 					<Avatar className='h-16 w-16 sm:h-20 sm:w-20'>
 						<AvatarImage
-							src={`https://api.dicebear.com/7.x/initials/svg?seed=${
-								user?.name || 'User'
-							}`}
+							src={
+								user.photo != null || user.photo
+									? user.photo
+									: `https://api.dicebear.com/7.x/initials/svg?seed=${
+											user?.name || 'User'
+									  }`
+							}
 						/>
 						<AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
 					</Avatar>

@@ -25,17 +25,20 @@ export const register = async ({
 	username,
 	email,
 	password,
+	photo = '',
 }: {
 	name: string;
 	username: string;
 	email: string;
 	password: string;
+	photo?: string;
 }) => {
 	const response = await axios.post('/auth/register', {
 		name,
 		username,
 		email,
 		password,
+		photo,
 	});
 	return response.data;
 };

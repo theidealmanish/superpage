@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from '@/lib/axios';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,8 @@ import {
 	Github,
 	Loader2,
 	Copy,
+	Camera,
+	Upload,
 } from 'lucide-react';
 
 import {
@@ -55,6 +57,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getUsername } from '@/lib/getUsername';
 import { toast } from 'sonner';
 import PhantomWalletButton from '@/components/wallet/PhantomWalletButton';
+import uploadImage from '@/lib/uploadImage';
 
 // Define the Profile interface
 interface Profile {
@@ -129,6 +132,9 @@ export default function ProfilePage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	const [avatarUrl, setAvatarUrl] = useState<string>('');
+	const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const router = useRouter();
 
 	let { username } = useParams();
@@ -163,6 +169,11 @@ export default function ProfilePage() {
 				const userResponse = await axios.get('/auth/current-user');
 				setUser(userResponse.data.data);
 				console.log(userResponse.data.data);
+
+				// Set the avatar URL if it exists
+				if (userResponse.data.data?.avatar) {
+					setAvatarUrl(userResponse.data.data.avatar);
+				}
 
 				// Then get profile
 				const profileResponse = await axios.get(`/profile/me`);
@@ -200,19 +211,69 @@ export default function ProfilePage() {
 	const onSubmit = async (values: z.infer<typeof profileSchema>) => {
 		setIsSaving(true);
 
-		console.log('Form values:', values);
 		try {
-			const response = await axios.post('/profile', values);
+			// Include the avatar URL in your submission if it's been changed
+			const profileData = {
+				...values,
+				// Only include if you want to update the avatar as part of the profile update
+				// Otherwise handle it separately via the handleAvatarChange function
+			};
+
+			const response = await axios.post('/profile', profileData);
 			console.log('Profile updated:', response.data);
 			setProfile(response.data);
 			setError(null);
 			setIsEditing(false);
+			toast.success('Profile updated successfully');
 		} catch (err) {
 			console.error('Failed to update profile:', err);
 			setError('Failed to update profile. Please try again.');
+			toast.error('Failed to update profile');
 		} finally {
 			setIsSaving(false);
 		}
+	};
+
+	const handleAvatarChange = async (
+		event: React.ChangeEvent<HTMLInputElement>
+	) => {
+		if (event.target.files && event.target.files[0]) {
+			const file = event.target.files[0];
+
+			// Preview the image immediately
+			const objectUrl = URL.createObjectURL(file);
+			setAvatarUrl(objectUrl);
+
+			// Then upload to cloudinary
+			setIsUploadingAvatar(true);
+			try {
+				const data = await uploadImage(file);
+
+				// Update the avatar URL in state
+				setAvatarUrl(data.secure_url);
+
+				// Update the user on the server
+				await axios.post('/profile', {
+					avatar: data.secure_url,
+				});
+
+				toast.success('Profile picture updated successfully');
+			} catch (error) {
+				console.error('Error uploading image:', error);
+				toast.error('Failed to upload profile picture');
+
+				// Reset to original avatar if there was an error
+				if (user?.avatar) {
+					setAvatarUrl(user.avatar);
+				}
+			} finally {
+				setIsUploadingAvatar(false);
+			}
+		}
+	};
+
+	const triggerFileInput = () => {
+		fileInputRef.current?.click();
 	};
 
 	if (isLoading) {
@@ -223,14 +284,48 @@ export default function ProfilePage() {
 		<div className='container mx-auto py-10 mt-16'>
 			<div className='max-w-3xl mx-auto'>
 				<div className='flex flex-col sm:flex-row sm:items-center gap-4 mb-8'>
-					<Avatar className='h-16 w-16 sm:h-20 sm:w-20'>
-						<AvatarImage
-							src={`https://api.dicebear.com/7.x/initials/svg?seed=${
-								user?.name || 'User'
-							}`}
+					<div className='relative group'>
+						<Avatar
+							className='h-16 w-16 sm:h-20 sm:w-20 border-2 border-white shadow-md cursor-pointer'
+							onClick={triggerFileInput}
+						>
+							{avatarUrl ? (
+								<AvatarImage src={avatarUrl} alt={user?.name || 'User'} />
+							) : (
+								<AvatarImage
+									src={`https://api.dicebear.com/7.x/initials/svg?seed=${
+										user?.name || 'User'
+									}`}
+								/>
+							)}
+							<AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+
+							{/* Upload overlay that appears on hover */}
+							<div className='absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center'>
+								<Camera className='h-6 w-6 text-white' />
+							</div>
+
+							{/* Loading overlay */}
+							{isUploadingAvatar && (
+								<div className='absolute inset-0 bg-black/50 rounded-full flex items-center justify-center'>
+									<Loader2 className='h-6 w-6 text-white animate-spin' />
+								</div>
+							)}
+						</Avatar>
+						<p className='text-xs text-gray-500 mt-1 text-center whitespace-nowrap'>
+							{isUploadingAvatar ? 'Uploading...' : 'Click to change'}
+						</p>
+
+						{/* Hidden file input */}
+						<input
+							type='file'
+							ref={fileInputRef}
+							onChange={handleAvatarChange}
+							accept='image/*'
+							className='hidden'
+							disabled={isUploadingAvatar}
 						/>
-						<AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
-					</Avatar>
+					</div>
 
 					<div>
 						<h1 className='text-2xl font-bold'>{user?.name || 'User'}</h1>

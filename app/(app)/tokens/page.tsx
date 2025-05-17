@@ -491,6 +491,14 @@ export default function TokensPage() {
 													</p>
 												</div>
 											)}
+											<div>
+												<div className='text-xs text-gray-500 mb-0.5'>
+													Contract Address
+												</div>
+												<p className='text-sm line-clamp-2'>
+													{token.contractAddress}
+												</p>
+											</div>
 										</div>
 									</CardContent>
 									<CardFooter className='pt-4'>
