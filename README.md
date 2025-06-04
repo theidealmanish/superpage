@@ -6,7 +6,7 @@
 
 ## Solution:
 
-"Superpa.ge is a decentralized platform built on the Stellar blockchain that liberates creators. We're building a suite of tools that put creators first, fostering direct connections with their fans, and maximizing their earnings. Our Chrome extension allows fans to tip creators directly on platforms they already use. We're leveraging Stellar's high-speed, low-cost transactions to make tipping instant and accessible."
+"Superpa.ge is a decentralized platform built on the Solana blockchain that liberates creators. We're building a suite of tools that put creators first, fostering direct connections with their fans, and maximizing their earnings. Our Chrome extension allows fans to tip creators directly on platforms they already use. We're leveraging Solana's high-speed, low-cost transactions to make tipping instant and accessible."
 
 ## Key Features:
 
@@ -14,7 +14,7 @@
 
 * **Unified Creator Profiles:** "Creators can consolidate their entire online presence on Superpa.ge, linking all their social channels (YouTube, GitHub, Twitch, etc.). This provides a single, discoverable hub for their audience."
 
-* **Web3 Powered Transactions:** "Built on the Stellar network, Superpa.ge offers transparent, secure, and low-cost transactions. This eliminates the need for intermediaries and empowers both creators and fans."
+* **Web3 Powered Transactions:** "Built on the Solana network, Superpa.ge offers transparent, secure, and low-cost transactions. This eliminates the need for intermediaries and empowers both creators and fans."
 
 ## Future Vision:
 
